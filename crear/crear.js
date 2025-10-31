@@ -6,18 +6,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const formCamp = document.getElementById('formCampana');
   const formCent = document.getElementById('formCentro');
 
-  tabCamp.addEventListener('click', () => {
-    tabCamp.classList.add('active'); tabCentro.classList.remove('active');
-    formCamp.classList.remove('hidden'); formCent.classList.add('hidden');
-    tabCamp.setAttribute('aria-selected','true'); tabCentro.setAttribute('aria-selected','false');
-    window.scrollTo({top:0, behavior:'smooth'});
-  });
-  tabCentro.addEventListener('click', () => {
-    tabCentro.classList.add('active'); tabCamp.classList.remove('active');
-    formCent.classList.remove('hidden'); formCamp.classList.add('hidden');
-    tabCentro.setAttribute('aria-selected','true'); tabCamp.setAttribute('aria-selected','false');
-    window.scrollTo({top:0, behavior:'smooth'});
-  });
+  // Ajustar visibilidad inicial según lo renderizado por PHP (y accessible role)
+  if (tabCamp && tabCentro) {
+    tabCamp.addEventListener('click', () => {
+      tabCamp.classList.add('active'); tabCentro.classList.remove('active');
+      if (formCamp) formCamp.classList.remove('hidden');
+      if (formCent) formCent.classList.add('hidden');
+      tabCamp.setAttribute('aria-selected','true'); tabCentro.setAttribute('aria-selected','false');
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+    tabCentro.addEventListener('click', () => {
+      tabCentro.classList.add('active'); tabCamp.classList.remove('active');
+      if (formCent) formCent.classList.remove('hidden');
+      if (formCamp) formCamp.classList.add('hidden');
+      tabCentro.setAttribute('aria-selected','true'); tabCamp.setAttribute('aria-selected','false');
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  }
 
   /* ------------------ CATEGORIES CHIPS with suggestions ------------------ */
   function setupChips(inputId, suggestId, chipsContainerId, hiddenId) {
@@ -35,13 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
       values.forEach((v, idx) => {
         const el = document.createElement('div');
         el.className = 'chip';
-        el.innerHTML = `${v} <span class="remove" data-idx="${idx}" title="Eliminar">×</span>`;
+        el.innerHTML = `${escapeHtml(v)} <span class="remove" data-idx="${idx}" title="Eliminar">×</span>`;
         chipsWrap.appendChild(el);
       });
     }
 
     function updateSuggestions() {
-      const q = input.value.trim().toLowerCase();
+      const q = (input.value || '').trim().toLowerCase();
       suggestWrap.innerHTML = '';
       if (!q) { suggestWrap.classList.add('hidden'); return; }
       // coincidencias que comienzan con q primero, luego las que lo contienen
@@ -184,16 +189,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const lngField = document.getElementById(lngId);
     let timer = null;
 
+    if (!input) return;
+
     input.addEventListener('input', () => {
       const q = input.value.trim();
-      latField.value = '';
-      lngField.value = '';
-      if (!q) { results.classList.add('hidden'); results.innerHTML = ''; return; }
+      if (latField) latField.value = '';
+      if (lngField) lngField.value = '';
+      if (!q) { if (results) { results.classList.add('hidden'); results.innerHTML = ''; } return; }
       clearTimeout(timer);
       timer = setTimeout(() => {
+        // Nominatim query
         fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(q)}`, {
           headers: { 'Accept': 'application/json' }
         }).then(r => r.json()).then(data => {
+          if (!results) return;
           results.innerHTML = '';
           if (!Array.isArray(data) || data.length === 0) { results.classList.add('hidden'); return; }
           data.forEach(item => {
@@ -205,8 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
             div.dataset.lon = item.lon;
             div.addEventListener('click', () => {
               input.value = display;
-              latField.value = item.lat;
-              lngField.value = item.lon;
+              if (latField) latField.value = item.lat;
+              if (lngField) lngField.value = item.lon;
               results.classList.add('hidden');
             });
             results.appendChild(div);
@@ -229,100 +238,241 @@ document.addEventListener('DOMContentLoaded', () => {
   setupAddressAutocomplete('addressCamp','addrResultsCamp','latCamp','lngCamp');
   setupAddressAutocomplete('addressCentro','addrResultsCentro','latCentro','lngCentro');
 
-  /* ------------------ IMAGE PREVIEW & REMOVE ------------------ */
-  function setupImagePreview(inputId, previewId) {
+  /* ------------------ IMAGE PREVIEW, MULTI-ADD, REMOVE & DRAG-REORDER ------------------ */
+  function createFileManager(inputId, previewId, maxFiles = 6) {
     const input = document.getElementById(inputId);
     const preview = document.getElementById(previewId);
+    let filesArr = []; // array of File objects to maintain order
 
-    function clearPreview() { preview.innerHTML = ''; }
+    function render() {
+      if (!preview) return;
+      preview.innerHTML = '';
+      filesArr.forEach((file, idx) => {
+        const box = document.createElement('div');
+        box.className = 'preview';
+        box.draggable = true;
+        box.dataset.idx = idx;
+        // create image preview
+        const img = document.createElement('img');
+        img.alt = file.name;
+        box.appendChild(img);
 
-    // file button behavior: clicking label triggers hidden input (handled by HTML)
-    input.addEventListener('change', () => {
-      clearPreview();
-      const files = Array.from(input.files).slice(0, 6); // limitar a 6
-      files.forEach((f, idx) => {
-        if (!f.type.startsWith('image/')) return;
+        const del = document.createElement('div');
+        del.className = 'del';
+        del.title = 'Eliminar';
+        del.dataset.idx = idx;
+        del.textContent = '×';
+        box.appendChild(del);
+
+        // cover label for "portada"
+        if (idx === 0) {
+          const cov = document.createElement('div');
+          cov.className = 'cover';
+          cov.textContent = 'Portada';
+          box.appendChild(cov);
+        }
+
+        // drag handlers
+        box.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', String(idx));
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        box.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          box.style.opacity = '0.7';
+        });
+        box.addEventListener('dragleave', () => {
+          box.style.opacity = '1';
+        });
+        box.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const src = Number(e.dataTransfer.getData('text/plain'));
+          const dst = Number(box.dataset.idx);
+          if (!Number.isNaN(src) && !Number.isNaN(dst) && src !== dst) {
+            const item = filesArr.splice(src, 1)[0];
+            filesArr.splice(dst, 0, item);
+            updateInputFiles();
+            render();
+          }
+        });
+
+        // delete handler
+        del.addEventListener('click', () => {
+          const i = Number(del.dataset.idx);
+          filesArr.splice(i, 1);
+          updateInputFiles();
+          render();
+        });
+
+        // read file
         const reader = new FileReader();
         reader.onload = (ev) => {
-          const box = document.createElement('div');
-          box.className = 'preview';
-          box.innerHTML = `<img src="${ev.target.result}" alt="img"> <div class="del" data-idx="${idx}" title="Eliminar">×</div>`;
-          preview.appendChild(box);
+          img.src = ev.target.result;
         };
-        reader.readAsDataURL(f);
+        reader.readAsDataURL(file);
+
+        preview.appendChild(box);
       });
+    }
+
+    function updateInputFiles() {
+      if (!input) return;
+      // build DataTransfer from filesArr
+      const dt = new DataTransfer();
+      filesArr.forEach(f => dt.items.add(f));
+      input.files = dt.files;
+    }
+
+    if (!input) return {
+      getFilesArray: () => [],
+      setFilesArray: () => {},
+      clear: () => {}
+    };
+
+    input.addEventListener('change', (e) => {
+      const newFiles = Array.from(e.target.files || []);
+      // append but prevent duplicates (by name+size)
+      newFiles.forEach(f => {
+        if (filesArr.length >= maxFiles) return;
+        const exists = filesArr.some(x => x.name === f.name && x.size === f.size && x.type === f.type);
+        if (!exists) filesArr.push(f);
+      });
+      updateInputFiles();
+      render();
+      // clear input so user can re-open picker and select same file names if needed
+      input.value = '';
     });
 
-    // eliminar preview (esto no elimina del input File, solo la previsualizacion)
-    preview.addEventListener('click', (e) => {
-      if (e.target.classList.contains('del')) {
-        const idx = Number(e.target.dataset.idx);
-        const dataTransfer = new DataTransfer();
-        const files = Array.from(input.files);
-        files.forEach((f, i) => { if (i !== idx) dataTransfer.items.add(f); });
-        input.files = dataTransfer.files;
-        // volver a renderizar
-        preview.innerHTML = '';
-        Array.from(input.files).forEach((f, i) => {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            const box = document.createElement('div');
-            box.className = 'preview';
-            box.innerHTML = `<img src="${ev.target.result}" alt="img"> <div class="del" data-idx="${i}" title="Eliminar">×</div>`;
-            preview.appendChild(box);
-          };
-          reader.readAsDataURL(f);
-        });
-      }
-    });
+    return {
+      getFilesArray: () => filesArr,
+      setFilesArray: (arr) => { filesArr = arr; updateInputFiles(); render(); },
+      clear: () => { filesArr = []; updateInputFiles(); render(); }
+    };
   }
 
-  setupImagePreview('imgsCamp','previewCamp');
-  setupImagePreview('imgsCentro','previewCentro');
+  const fmCamp = createFileManager('imgsCamp','previewCamp', 6);
+  const fmCentro = createFileManager('imgsCentro','previewCentro', 6);
 
-  /* ------------------ Ajustes UI menores ------------------ */
+  /* ------------------ HORARIOS: UI para agregar rangos (Camp y Centro) ------------------ */
+  function setupHorarios(prefix) {
+    const dayInput = document.getElementById('horarioDay' + prefix);
+    const startInput = document.getElementById('horarioStart' + prefix);
+    const endInput = document.getElementById('horarioEnd' + prefix);
+    const addBtn = document.getElementById('addHorario' + prefix);
+    const list = document.getElementById('horariosList' + prefix);
+    const hidden = document.getElementById('horarioHidden' + prefix);
+    if (!list || !hidden || !addBtn) return;
+
+    function renderList() {
+      list.innerHTML = '';
+      const arr = (hidden.value || '').split('|').map(s=>s.trim()).filter(Boolean);
+      arr.forEach((h, idx) => {
+        const el = document.createElement('div');
+        el.className = 'chip';
+        el.innerHTML = `${escapeHtml(h)} <span class="remove" data-idx="${idx}" title="Eliminar">×</span>`;
+        list.appendChild(el);
+      });
+    }
+
+    addBtn.addEventListener('click', () => {
+      const d = dayInput ? dayInput.value.trim() : '';
+      const s = startInput ? startInput.value : '';
+      const e = endInput ? endInput.value : '';
+      if (!s || !e) {
+        alert('Por favor seleccioná hora de inicio y hora de fin.');
+        return;
+      }
+      const text = d ? `${d} ${s}-${e}` : `${s}-${e}`;
+      const arr = (hidden.value || '').split('|').map(s=>s.trim()).filter(Boolean);
+      // evitar duplicados
+      if (arr.some(x => x.toLowerCase() === text.toLowerCase())) {
+        if (dayInput) dayInput.value = '';
+        if (startInput) startInput.value = '';
+        if (endInput) endInput.value = '';
+        return;
+      }
+      arr.push(text);
+      hidden.value = arr.join(' | ');
+      renderList();
+      if (dayInput) dayInput.value = '';
+      if (startInput) startInput.value = '';
+      if (endInput) endInput.value = '';
+    });
+
+    list.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove')) {
+        const idx = Number(e.target.dataset.idx);
+        const arr = (hidden.value || '').split('|').map(s=>s.trim()).filter(Boolean);
+        arr.splice(idx, 1);
+        hidden.value = arr.join(' | ');
+        renderList();
+      }
+    });
+
+    // initial render
+    renderList();
+  }
+
+  setupHorarios('Camp');
+  setupHorarios('Centro');
+
+  /* ------------------ Ajustes UI menores y validaciones antes de submit ------------------ */
   // asegurar que al subir imagenes y al final el bottom nav no tape botones
   window.addEventListener('resize', () => {
-    document.querySelector('main.content').style.paddingBottom = (72 + 30) + 'px';
+    const main = document.querySelector('main.content');
+    if (main) main.style.paddingBottom = (72 + 30) + 'px';
   });
 
-  // evitar envío si lat/lng no seleccionado (en caso de búsqueda)
-  const submitCamp = document.querySelector('#formCampana');
-  if (submitCamp) {
-    submitCamp.addEventListener('submit', (e) => {
-      // si hay texto en dirección pero no lat/lng, prevenir y sugerir usar la lista
+  // phone handling & horario hidden sync & telefono hidden value
+  const formCampEl = document.getElementById('formCampana');
+  if (formCampEl) {
+    formCampEl.addEventListener('submit', (e) => {
+      // phone
+      const local = document.getElementById('phoneLocalCamp');
+      const hiddenTel = document.getElementById('telefonoHiddenCamp');
+      if (local && hiddenTel) {
+        const raw = (local.value || '').replace(/\D/g, '');
+        hiddenTel.value = raw ? '+54' + raw : '';
+      }
+      // direccion: ensure lat/lng if chosen
       const adr = document.getElementById('addressCamp');
       const lat = document.getElementById('latCamp');
-      if (adr.value.trim() && (!lat.value || lat.value === '')) {
+      if (adr && lat && adr.value.trim() && (!lat.value || lat.value === '')) {
         if (!confirm('No seleccionaste una dirección desde la lista. ¿Querés continuar igual (la ubicación puede quedar imprecisa)?')) {
           e.preventDefault();
           return;
         }
       }
-      // asegurarse de pasar categorías (el hidden)
-      const hidden = document.getElementById('categorias_hidden_camp');
-      if (!hidden.value) hidden.value = '';
-      // quitar comas sobrantes en meta
+      // meta cleanup
       const mt = document.getElementById('metaText');
-      if (mt) {
-        mt.value = mt.value.replace(/[^\d]/g, '') || '0';
-      }
+      if (mt) mt.value = mt.value.replace(/[^\d]/g, '') || '0';
+      // categories hidden set
+      const hidden = document.getElementById('categorias_hidden_camp');
+      if (hidden && !hidden.value) hidden.value = '';
     });
   }
 
-  const submitCentro = document.querySelector('#formCentro');
-  if (submitCentro) {
-    submitCentro.addEventListener('submit', (e) => {
+  const formCentroEl = document.getElementById('formCentro');
+  if (formCentroEl) {
+    formCentroEl.addEventListener('submit', (e) => {
+      const local = document.getElementById('phoneLocalCentro');
+      const hiddenTel = document.getElementById('telefonoHiddenCentro');
+      if (local && hiddenTel) {
+        const raw = (local.value || '').replace(/\D/g, '');
+        hiddenTel.value = raw ? '+54' + raw : '';
+      }
+
       const adr = document.getElementById('addressCentro');
       const lat = document.getElementById('latCentro');
-      if (adr.value.trim() && (!lat.value || lat.value === '')) {
+      if (adr && lat && adr.value.trim() && (!lat.value || lat.value === '')) {
         if (!confirm('No seleccionaste una dirección desde la lista. ¿Querés continuar igual (la ubicación puede quedar imprecisa)?')) {
           e.preventDefault();
           return;
         }
       }
       const hidden = document.getElementById('categorias_hidden_centro');
-      if (!hidden.value) hidden.value = '';
+      if (hidden && !hidden.value) hidden.value = '';
     });
   }
 

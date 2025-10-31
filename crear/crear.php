@@ -14,6 +14,20 @@ $uid = intval($_SESSION['usuario_id']);
 $mensaje = '';
 $tipo_msg = ''; // success | error
 
+// obtener rol del usuario (para mostrar/ocultar tabs)
+$user_role = 'donante';
+$stmtRole = $conn->prepare("SELECT rol, nombre FROM usuarios WHERE id_usuario = ? LIMIT 1");
+if ($stmtRole) {
+    $stmtRole->bind_param("i", $uid);
+    $stmtRole->execute();
+    $resRole = $stmtRole->get_result();
+    if ($resRole && $resRole->num_rows > 0) {
+        $uRow = $resRole->fetch_assoc();
+        $user_role = $uRow['rol'] ?? 'donante';
+    }
+    $stmtRole->close();
+}
+
 // Manejo POST (crear)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // campo "tipo" indica 'campana' o 'centro'
@@ -24,7 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $descripcion = trim($_POST['descripcion'] ?? '');
     $categorias = trim($_POST['categorias_hidden'] ?? ''); // coma-sep (desde JS)
     $horario = trim($_POST['horario'] ?? '');
-    $direccion = trim($_POST['direccion'] ?? '');
+    // direccion: aceptar tanto 'direccion' como 'direccion_manual' por compatibilidad
+    $direccion = trim($_POST['direccion'] ?? ($_POST['direccion_manual'] ?? ''));
     $lat = $_POST['lat'] ?? null;
     $lng = $_POST['lng'] ?? null;
     $telefono = trim($_POST['telefono'] ?? '');
@@ -52,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $lng_db = is_null($lng) || $lng === '' ? null : floatval($lng);
             $creador = $uid;
             // bind: s = string, d = double, i = int
+            // nota: si lat_db/lng_db son null, bind_param con "d" no acepta null directamente; en tu entorno actual esto venía funcionando, mantengo el mismo patrón
             $stmt->bind_param(
                 "ssddsssssi",
                 $titulo,
@@ -71,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tipo_msg = 'success';
 
                 // manejo de imágenes: guardarlas en /uploads/campanas/
-                if (!empty($_FILES['imagenes']) && count($_FILES['imagenes']['name']) > 0) {
+                if (!empty($_FILES['imagenes']) && isset($_FILES['imagenes']['name']) && count($_FILES['imagenes']['name']) > 0) {
                     $saved = [];
                     $uploadDir = __DIR__ . '/../uploads/campanas/';
                     if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
@@ -144,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tipo_msg = 'success';
 
                 // manejo de imágenes: guardarlas en /uploads/centros/
-                if (!empty($_FILES['imagenes']) && count($_FILES['imagenes']['name']) > 0) {
+                if (!empty($_FILES['imagenes']) && isset($_FILES['imagenes']['name']) && count($_FILES['imagenes']['name']) > 0) {
                     $saved = [];
                     $uploadDir = __DIR__ . '/../uploads/centros/';
                     if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
@@ -224,14 +240,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       <?php endif; ?>
 
-      <!-- Tabs: elegir tipo -->
+      <?php
+        // control de visibilidad
+        $showCamp = ($user_role === 'admin' || $user_role === 'donante');
+        $showCentro = ($user_role === 'admin' || $user_role === 'beneficiario');
+        // tab inicial: por defecto camp, si solo beneficiario -> centro
+        $activeTab = 'camp';
+        if ($user_role === 'beneficiario' && $showCentro && !$showCamp) $activeTab = 'centro';
+        // si admin deja camp por defecto (puedes cambiar si querés abrir centro primero)
+        $campVisible = ($showCamp && $activeTab === 'camp') ? '' : 'hidden';
+        $centVisible = ($showCentro && $activeTab === 'centro') ? '' : 'hidden';
+      ?>
+
+      <!-- Tabs: elegir tipo (render condicionado por rol) -->
       <div class="tabs" role="tablist">
-        <button id="tabCamp" class="tab active" type="button" role="tab" aria-selected="true">Crear campaña / colecta</button>
-        <button id="tabCentro" class="tab" type="button" role="tab" aria-selected="false">Crear centro de donación</button>
+        <?php if ($showCamp): ?>
+          <button id="tabCamp" class="tab <?php echo $activeTab === 'camp' ? 'active' : ''; ?>" type="button" role="tab" aria-selected="<?php echo $activeTab === 'camp' ? 'true' : 'false'; ?>">Crear campaña / colecta</button>
+        <?php endif; ?>
+
+        <?php if ($showCentro): ?>
+          <button id="tabCentro" class="tab <?php echo $activeTab === 'centro' ? 'active' : ''; ?>" type="button" role="tab" aria-selected="<?php echo $activeTab === 'centro' ? 'true' : 'false'; ?>">Crear centro de donación</button>
+        <?php endif; ?>
       </div>
 
       <!-- FORM: Campaña -->
-      <form id="formCampana" class="form" method="POST" enctype="multipart/form-data" action="crear.php">
+      <form id="formCampana" class="form <?php echo $campVisible; ?>" method="POST" enctype="multipart/form-data" action="crear.php">
         <input type="hidden" name="tipo" value="campana">
 
         <!-- IMAGENES al principio -->
@@ -241,7 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="file" id="imgsCamp" name="imagenes[]" accept="image/*" multiple style="display:none">
           <div class="file-note">Máx 6 imágenes • JPG, PNG, WEBP • 2MB c/u</div>
         </div>
-        <div id="previewCamp" class="preview-grid"></div>
+        <div id="previewCamp" class="preview-grid" aria-live="polite"></div>
 
         <label>Título</label>
         <input name="titulo" id="camp_title" required placeholder="Nombre de la campaña">
@@ -260,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Meta (cantidad / objetivo)</label>
         <div class="meta-row">
           <div class="range-wrap" style="flex:1">
-            <input type="range" id="metaRange" min="0" max="99999999" step="1" value="0">
+            <input type="range" id="metaRange" min="0" max="99999999" step="1" value="0" aria-label="Meta slider">
           </div>
           <!-- este input cambia con formato (comas) y es editable -->
           <input type="text" id="metaText" name="meta" value="0" pattern="[0-9,]*" inputmode="numeric" aria-label="Meta">
@@ -277,17 +310,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
-        <label>Horario</label>
-        <input name="horario" placeholder="Ej: Lun-Vie 09:00-18:00">
+        <label>Horario de atención</label>
+        <div class="horario-ui">
+          <div class="horario-row">
+            <input type="text" id="horarioDayCamp" placeholder="Día(s) (ej: Lun-Vie)">
+            <input type="time" id="horarioStartCamp" aria-label="Hora inicio">
+            <input type="time" id="horarioEndCamp" aria-label="Hora fin">
+            <button type="button" class="btn-small" id="addHorarioCamp">Agregar</button>
+          </div>
+          <div id="horariosListCamp" class="chips" aria-live="polite"></div>
+          <input type="hidden" name="horario" id="horarioHiddenCamp">
+        </div>
 
         <label>Dirección (buscador)</label>
+        <!-- name corregido a "direccion" para que coincida con lo que lee PHP -->
         <input id="addressCamp" name="direccion" placeholder="Ingresá la dirección y seleccioná una opción" autocomplete="off" required>
         <div id="addrResultsCamp" class="addr-results hidden" aria-hidden="true"></div>
         <input type="hidden" name="lat" id="latCamp">
         <input type="hidden" name="lng" id="lngCamp">
 
         <label>Teléfono de contacto</label>
-        <input name="telefono" placeholder="+5411... (solo números y prefijo)">
+        <div class="phone-row">
+          <div class="phone-input-group">
+            <span class="phone-prefix">+54</span>
+            <input type="tel" id="phoneLocalCamp" placeholder="Ej: 112223333" pattern="\d*" inputmode="numeric" aria-label="Teléfono local">
+          </div>
+          <div class="file-note">Ingresá solo el número sin prefijo ni espacios.</div>
+          <input type="hidden" name="telefono" id="telefonoHiddenCamp">
+        </div>
 
         <div style="margin-top:14px;">
           <button class="btn-primary" type="submit">Crear campaña</button>
@@ -295,7 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </form>
 
       <!-- FORM: Centro -->
-      <form id="formCentro" class="form hidden" method="POST" enctype="multipart/form-data" action="crear.php">
+      <form id="formCentro" class="form <?php echo $centVisible; ?>" method="POST" enctype="multipart/form-data" action="crear.php">
         <input type="hidden" name="tipo" value="centro">
 
         <!-- IMAGENES al principio -->
@@ -305,7 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="file" id="imgsCentro" name="imagenes[]" accept="image/*" multiple style="display:none">
           <div class="file-note">Máx 6 imágenes • JPG, PNG, WEBP • 2MB c/u</div>
         </div>
-        <div id="previewCentro" class="preview-grid"></div>
+        <div id="previewCentro" class="preview-grid" aria-live="polite"></div>
 
         <label>Nombre del centro</label>
         <input name="titulo" id="centro_title" required placeholder="Nombre del centro">
@@ -327,11 +377,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="hidden" name="lat" id="latCentro">
         <input type="hidden" name="lng" id="lngCentro">
 
-        <label>Horario</label>
-        <input name="horario" placeholder="Ej: Lun-Vie 09:00-18:00">
+        <label>Horario de atención</label>
+        <div class="horario-ui">
+          <div class="horario-row">
+            <input type="text" id="horarioDayCentro" placeholder="Día(s) (ej: Lun-Vie)">
+            <input type="time" id="horarioStartCentro" aria-label="Hora inicio">
+            <input type="time" id="horarioEndCentro" aria-label="Hora fin">
+            <button type="button" class="btn-small" id="addHorarioCentro">Agregar</button>
+          </div>
+          <div id="horariosListCentro" class="chips" aria-live="polite"></div>
+          <input type="hidden" name="horario" id="horarioHiddenCentro">
+        </div>
 
         <label>Teléfono de contacto</label>
-        <input name="telefono" placeholder="+5411... (solo números y prefijo)">
+        <div class="phone-row">
+          <div class="phone-input-group">
+            <span class="phone-prefix">+54</span>
+            <input type="tel" id="phoneLocalCentro" placeholder="Ej: 112223333" pattern="\d*" inputmode="numeric" aria-label="Teléfono local">
+          </div>
+          <div class="file-note">Ingresá solo el número sin prefijo ni espacios.</div>
+          <input type="hidden" name="telefono" id="telefonoHiddenCentro">
+        </div>
 
         <div style="margin-top:14px;">
           <button class="btn-primary" type="submit">Crear centro</button>
@@ -369,6 +435,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </a>
   </nav>
 
+  <script>
+    // pasamos role al JS para control si hiciera falta
+    window.SOL_ROLE = "<?php echo htmlspecialchars($user_role); ?>";
+  </script>
   <script src="crear.js"></script>
 </body>
 </html>

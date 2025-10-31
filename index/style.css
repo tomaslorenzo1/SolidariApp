@@ -1,0 +1,333 @@
+/* Reset y básicos */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: 'Poppins', sans-serif;
+  color: #333;
+  line-height: 1.6;
+  background-color: #f9f9f9;
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Animación de entrada para el contenido principal */
+/* Esto hace que el contenido aparezca suavemente después del header */
+.main-content {
+  animation: fadeInDownContent 1.5s ease-out 0.5s forwards; 
+  opacity: 0; /* Oculto inicialmente */
+}
+
+/* Botones comunes */
+.btn {
+  background-color: #2980B9;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 25px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+.btn:hover {
+  background-color: #21618C;
+  transform: scale(1.05);
+}
+
+/* Header */
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background-color: #3498DB;
+  color: white;
+  padding: 15px 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  /* Animación para el header al cargar */
+  animation: slideInDown 0.8s ease-out; 
+}
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo img {
+  width: 50px;
+  height: 50px;
+}
+nav a {
+  margin: 0 15px;
+  font-weight: 500;
+  color: white;
+  transition: color 0.3s;
+}
+nav a:hover {
+  color: #f2f2f2;
+}
+nav .btn {
+  margin-left: 15px;
+}
+
+/* Hero */
+.hero {
+  height: 100vh;
+  background: url('./img//WhatsApp\ Image\ 2025-10-05\ at\ 20.29.48.jpg') center/cover no-repeat;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+}
+.hero-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.4);
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+}
+.hero-content h1 {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  color: #fff;
+}
+.hero-content p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+}
+
+/* Cómo funciona */
+.how-it-works {
+  padding: 80px 0;
+}
+.how-it-works h2 {
+  text-align: center;
+  margin-bottom: 40px;
+  color: #2980B9;
+}
+.steps {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.step {
+  background: #fff;
+  border-radius: 15px;
+  padding: 25px;
+  text-align: center;
+  width: 260px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+  display: flex; 
+  flex-direction: column;
+  align-items: center;
+}
+.step:hover {
+  transform: translateY(-10px);
+}
+.step .icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  color: #2980B9;
+}
+/* Estilos para las nuevas imágenes de los pasos */
+.step-img {
+  width: 100%;
+  max-width: 150px; /* Tamaño máximo para las imágenes de los pasos */
+  height: 150px; /* Altura fija para mantener la uniformidad */
+  border-radius: 10px;
+  margin-bottom: 15px;
+  object-fit: contain; 
+  aspect-ratio: 1/1; 
+}
+
+/* Nuestro objetivo */
+.goal {
+  padding: 80px 0;
+  background-color: #f2f6f9;
+  text-align: center;
+}
+.goal h2 {
+  color: #2980B9;
+  margin-bottom: 30px;
+}
+.goal-content {
+  max-width: 900px;
+  margin: auto;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #444;
+  animation: fadeInUp 1.5s ease;
+}
+.goal img {
+  width: 100%;
+  max-width: 600px;
+  margin-top: 40px;
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  animation: fadeIn 2s ease;
+}
+
+/* Sección NUEVA: Tu Ayuda en Cifras (Stats) */
+.stats {
+    padding: 80px 0;
+    text-align: center;
+    background-color: #fff;
+}
+.stats h2 {
+    color: #2980B9;
+    margin-bottom: 15px;
+}
+.stats p {
+    font-size: 1.1rem;
+    margin-bottom: 40px;
+    color: #555;
+}
+.stats-container {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    max-width: 1000px;
+    margin: auto;
+}
+.stat-block {
+    padding: 20px;
+    background: #eaf5ff;
+    border-radius: 10px;
+    width: 250px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+.stat-block h3 {
+    font-size: 2.5rem;
+    color: #3498DB;
+    margin-bottom: 5px;
+}
+.stat-block p {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
+    color: #333;
+}
+/* FIN Sección NUEVA: Tu Ayuda en Cifras */
+
+
+/* Animaciones */
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Nuevas animaciones de entrada */
+@keyframes slideInDown {
+  0% { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeInDownContent {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* La sección 'Galería' y su 'images-grid' han sido eliminadas de este CSS */
+
+/* CTA final */
+.cta {
+  padding: 60px 0;
+  text-align: center;
+}
+.cta h2 {
+  font-size: 2.5rem;
+  color: #2980B9;
+  margin-bottom: 20px;
+}
+.cta p {
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+}
+
+/* Footer */
+footer {
+  background-color: #3498DB;
+  color: white;
+  padding: 40px 0;
+}
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 90%;
+  max-width: 1200px;
+  margin: auto;
+}
+.footer-info, .footer-contact, .footer-social {
+  margin-bottom: 20px;
+}
+.footer-logo {
+  width: 60px;
+  height: 60px;
+}
+.footer-contact h4, .footer-social h4 {
+  margin-bottom: 10px;
+}
+.footer-social a {
+  display: inline-block;
+  margin-right: 15px;
+  color: white;
+  font-weight: 500;
+  transition: opacity 0.3s;
+}
+.footer-social a:hover {
+  opacity: 0.8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  nav a {
+    display: none;
+  }
+  .nav-container {
+    justify-content: space-between;
+  }
+  .steps {
+    flex-direction: column;
+    align-items: center;
+  }
+  .goal-content {
+    padding: 0 20px;
+  }
+  .footer-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  /* Ajuste para que las cifras se apilen en móviles */
+  .stats-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  .stat-block {
+    width: 80%; /* Ocupa más espacio en el móvil */
+    margin-bottom: 15px;
+  }
+}

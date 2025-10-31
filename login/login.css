@@ -35,6 +35,11 @@ body{
 /* nombre de la marca */
 .brand-name{font-weight:600;font-size:20px}
 
+.brand-name a {
+  color: white;
+  text-decoration: none;
+}
+
 /* layout */
 .main-area{
   display:flex;

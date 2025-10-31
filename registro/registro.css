@@ -34,6 +34,11 @@ body{
 }
 .brand-name{font-weight:600;font-size:20px}
 
+.brand-name a {
+  color: white;
+  text-decoration: none;
+}
+
 /* Formulario */
 main {
   flex: 1;
