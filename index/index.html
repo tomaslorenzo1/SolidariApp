@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SolidariApp - Conectando Solidaridad</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://kit.fontawesome.com/a2b3cfa0c4.js" crossorigin="anonymous"></script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 </head>
 <body>
 
@@ -19,7 +22,7 @@
       <nav>
         <a href="#como-funciona">Cómo funciona</a>
         <a href="#objetivo">Nuestro objetivo</a>
-        <a href="#galeria">Galería</a>
+        <a href="#quienes-somos">¿Quiénes somos?</a>
         <a href="../login/login.html" class="btn">Iniciar Sesión</a>
         <a href="../registro/registro.html" class="btn">Registrarse</a>
       </nav>
@@ -77,24 +80,71 @@
       </div>
     </section>
 
+    <section id="quienes-somos" class="about-us">
+      <h2>¿Quiénes somos?</h2>
+      <p class="about-lead">Somos un equipo de alumnos de 7mo 3ra — Grupo: 1 — Turno: vespertino — Modalidad: Informática. Trabajamos en conjunto para aprender, diseñar y desarrollar soluciones web útiles y accesibles. Este proyecto es el resultado de nuestra colaboración: cada integrante aporta habilidades específicas para lograr un producto profesional y funcional.</p>
+
+      <div class="team-cards">
+        <!-- Tarjeta 1 -->
+        <article class="card">
+          <img src="img_integrantes/user1.png" alt="Foto Nombre1" loading="lazy">
+          <h3>Apellido Nombre 1</h3>
+          <p class="meta">Curso: 7mo · Grupo: 3ra grupo 1</p>
+          <p class="meta">Turno: Vespertino · Especialidad: Frontend</p>
+        </article>
+
+        <!-- Tarjeta 2 -->
+        <article class="card">
+          <img src="img_integrantes/user2.png" alt="Foto Nombre2" loading="lazy">
+          <h3>Apellido Nombre 2</h3>
+          <p class="meta">Curso: 7mo · Grupo: 3ra grupo 1</p>
+          <p class="meta">Turno: Vespertino · Especialidad: Backend</p>
+        </article>
+
+        <!-- Tarjeta 3 -->
+        <article class="card">
+          <img src="img_integrantes/user3.png" alt="Foto Nombre3" loading="lazy">
+          <h3>Apellido Nombre 3</h3>
+          <p class="meta">Curso: 7mo · Grupo: 3ra grupo 1</p>
+          <p class="meta">Turno: Vespertino · Especialidad: Fullstack</p>
+        </article>
+
+        <!-- Tarjeta 4 -->
+        <article class="card">
+          <img src="img_integrantes/user4.png" alt="Foto Nombre4" loading="lazy">
+          <h3>Apellido Nombre 4</h3>
+          <p class="meta">Curso: 7mo · Grupo: 3ra grupo 1</p>
+          <p class="meta">Turno: Vespertino · Especialidad: DevOps</p>
+        </article>
+
+        <!-- Tarjeta 5 -->
+        <article class="card">
+          <img src="img_integrantes/user5.png" alt="Foto Nombre5" loading="lazy">
+          <h3>Apellido Nombre 5</h3>
+          <p class="meta">Curso: 7mo · Grupo: 3ra grupo 1</p>
+          <p class="meta">Turno: Vespertino · Especialidad: QA</p>
+        </article>
+      </div>
+    </section>
+
     <section id="cifras" class="stats">
-  <h2>Tu Ayuda en Cifras</h2>
-  <p>Gracias a nuestra comunidad, hemos logrado estos hitos:</p>
-  <div class="stats-container">
-    <div class="stat-block">
-      <h3>0</h3>
-      <p>Voluntarios Registrados</p>
-    </div>
-    <div class="stat-block">
-      <h3>0</h3>
-      <p>Horas de Ayuda Donadas</p>
-    </div>
-    <div class="stat-block">
-      <h3>0</h3>
-      <p>Proyectos Finalizados con Éxito</p>
-    </div>
-  </div>
-</section>
+      <h2>Tu Ayuda en Cifras</h2>
+      <p>Gracias a nuestra comunidad, hemos logrado estos hitos:</p>
+      <div class="stats-container">
+        <div class="stat-block">
+          <h3>0</h3>
+          <p>Voluntarios Registrados</p>
+        </div>
+        <div class="stat-block">
+          <h3>0</h3>
+          <p>Horas de Ayuda Donadas</p>
+        </div>
+        <div class="stat-block">
+          <h3>0</h3>
+          <p>Proyectos Finalizados con Éxito</p>
+        </div>
+      </div>
+    </section>
 
     <section class="cta">
       <h2>¡Unite a nuestra comunidad!</h2>
@@ -102,7 +152,9 @@
       <a href="#" class="btn">Empezar ahora</a>
     </section>
 
-  </div> <footer id="contacto">
+  </div> 
+  
+  <footer id="contacto">
     <div class="footer-container">
       <div class="footer-info">
         <img src="./img/logo_header.png" alt="SolidariApp logo" class="footer-logo">
@@ -122,4 +174,16 @@
     </div>
   </footer>
 
+  <!-- pequeño script de diagnóstico: mira la consola para ver si style.css se cargó -->
+  <script>
+    (function(){
+      var found = Array.from(document.styleSheets).some(function(s){
+        return s.href && s.href.indexOf('style.css') !== -1;
+      });
+      if (!found) console.warn('DEBUG: style.css NO fue detectado entre document.styleSheets. Revisa la ruta y Network tab.');
+      else console.info('DEBUG: style.css cargado (comprueba cambios visibles). Si no ves cambios, presiona Ctrl+F5 para recargar forzadamente.');
+    })();
+  </script>
+
 </body>
+</html>

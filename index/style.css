@@ -1,4 +1,4 @@
-/* Reset y básicos */
+cas/* Reset y básicos */
 * {
   margin: 0;
   padding: 0;
@@ -20,6 +20,7 @@ a {
 .main-content {
   animation: fadeInDownContent 1.5s ease-out 0.5s forwards; 
   opacity: 0; /* Oculto inicialmente */
+  padding-top: 100px; /* evita que el header fijo tape las secciones al navegar por anclas */
 }
 
 /* Botones comunes */
@@ -84,13 +85,16 @@ nav .btn {
 /* Hero */
 .hero {
   height: 100vh;
-  background: url('./img//WhatsApp\ Image\ 2025-10-05\ at\ 20.29.48.jpg') center/cover no-repeat;
+  /* Ruta con comillas para evitar problemas por espacios/escapes */
+  background: url("./img/WhatsApp Image 2025-10-05 at 20.29.48.jpg") center/cover no-repeat;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   text-align: center;
+  /* color fallback si la imagen no carga */
+  background-color: #2b8ac6;
 }
 .hero-overlay {
   position: absolute;
@@ -228,6 +232,142 @@ nav .btn {
 }
 /* FIN Sección NUEVA: Tu Ayuda en Cifras */
 
+/* Sección NUEVA: ¿Quiénes somos? */
+.about-us {
+  padding: 80px 0;
+  text-align: center;
+  background-color: #f9f9f9;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.about-us h2 {
+  color: #2980B9;
+  margin-bottom: 20px;
+}
+.about-us p {
+  font-size: 1.2rem;
+  margin-bottom: 40px;
+  color: #555;
+}
+.about-lead {
+  max-width: 900px;
+  margin: 0 auto 30px;
+  font-size: 1.15rem;
+  color: #444;
+}
+.team-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 26px;
+  align-items: start;
+  justify-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  grid-auto-rows: auto;
+  padding: 10px; /* espacio extra alrededor de la grid */
+}
+
+/* Posicionamiento explícito para lograr la pirámide invertida */
+.team-cards .card:nth-child(1) { grid-column: 1; }
+.team-cards .card:nth-child(2) { grid-column: 3; }
+.team-cards .card:nth-child(3) { grid-column: 5; }
+.team-cards .card:nth-child(4) { grid-column: 2; }
+.team-cards .card:nth-child(5) { grid-column: 4; }
+
+/* Tarjeta: apariencia tipo card (mejor contraste y borde distintivo) */
+.team-cards .card {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid rgba(41,128,185,0.10);
+  border-left: 6px solid #2980B9; /* acento distintivo del tema */
+  padding: 20px 18px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(14, 30, 37, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hover sutil (refuerzo del borde y sombra) */
+.team-cards .card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 18px 40px rgba(14, 30, 37, 0.12);
+  border-color: rgba(41,128,185,0.18);
+}
+
+/* Estado de foco para accesibilidad (teclado) */
+.team-cards .card:focus-within,
+.team-cards .card:focus {
+  outline: 3px solid rgba(41,128,185,0.08);
+  outline-offset: 6px;
+}
+
+/* Foto avatar: redonda y centrada */
+.team-cards .card img {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto 12px auto;
+  border: 4px solid rgba(41,128,185,0.06); /* marco sutil */
+  background-color: #f2f4f6; /* fallback si imagen tarda en cargar */
+}
+
+/* Encabezado y meta dentro de la card */
+.team-cards .card h3 {
+  font-size: 1.05rem;
+  margin: 6px 0 4px 0;
+  color: #153e4b; /* más contraste */
+  font-weight: 600;
+}
+.team-cards .card .meta {
+  font-size: 0.92rem;
+  color: #556067;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* pequeño espaciado extra para las líneas de meta */
+.team-cards .card .meta + .meta {
+  margin-top: 6px;
+}
+
+/* Ajustes responsive */
+@media (max-width: 1000px) {
+  .team-cards {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+  .team-cards .card {
+    max-width: 320px;
+  }
+  .team-cards .card img {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+@media (max-width: 600px) {
+  .team-cards {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .team-cards .card {
+    max-width: 420px;
+    padding: 18px;
+  }
+  .team-cards .card img {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+.about-note {
+  margin-top: 18px;
+  font-size: 0.9rem;
+  color: #888;
+}
 
 /* Animaciones */
 @keyframes fadeInUp {
@@ -303,7 +443,7 @@ footer {
 
 /* Responsive */
 @media (max-width: 768px) {
-  nav a {
+  nav a:not(.btn) {
     display: none;
   }
   .nav-container {
@@ -330,4 +470,14 @@ footer {
     width: 80%; /* Ocupa más espacio en el móvil */
     margin-bottom: 15px;
   }
+}
+
+/* Hago que el scroll a secciones deje un margen visible debajo del header */
+section, .about-us, .how-it-works, .goal, .stats, .cta {
+  scroll-margin-top: 140px; /* aumentado desde 110px */
+}
+
+/* Suavizado de scroll al navegar por anclas */
+html {
+  scroll-behavior: smooth;
 }
