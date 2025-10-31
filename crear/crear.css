@@ -72,22 +72,24 @@ main.content{
 .form{display:flex;flex-direction:column;gap:10px}
 .form.hidden{display:none}
 
-label{font-weight:700;margin-top:6px;color:#243240}
-input[type="text"], input[type="date"], input[type="time"], input[type="email"], input[type="tel"], textarea, input[type="search"], input[type="number"]{
+label{display:block;font-weight:700;margin:10px 0 6px;color:#243240}
+input[type="text"], input[type="date"], input[type="time"], input[type="email"], input[type="tel"], textarea, input[type="search"], input[type="number"], input[type="url"]{
   width:100%;
-  padding:12px 14px;
-  border-radius:12px;
-  border:1px solid #e6eefc;
-  background:#fff;
+  padding:13px 14px;
+  border-radius:14px;
+  border:1px solid #dfe8f6;
+  background:linear-gradient(180deg,#fff, #fbfdff);
   font-size:15px;
   outline:none;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
   box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
 }
-input[type="text"]:focus, textarea:focus, input[type="date"]:focus, input[type="tel"]:focus{
+input[type="text"]:focus, textarea:focus, input[type="date"]:focus, input[type="tel"]:focus, input[type="url"]:focus, input[type="search"]:focus{
   border-color: var(--blue);
-  box-shadow: 0 6px 18px rgba(43,108,176,0.06);
+  box-shadow: 0 8px 22px rgba(43,108,176,0.12);
 }
-textarea{resize:vertical;min-height:80px;padding-top:12px}
+input[type="text"]::placeholder, textarea::placeholder, input[type="url"]::placeholder, input[type="search"]::placeholder{color:#9fb2c8}
+textarea{resize:vertical;min-height:110px;padding-top:12px;border-radius:16px}
 
 /* categorias chips + suggestions */
 .cat-input{display:flex;flex-direction:column;gap:6px}
@@ -138,16 +140,16 @@ textarea{resize:vertical;min-height:80px;padding-top:12px}
 
 /* address results */
 .addr-results{
-  background:#fff;border-radius:10px;border:1px solid #e6eefc;box-shadow:var(--shadow);margin-top:6px;max-height:180px;overflow:auto;padding:6px;position:relative;z-index:20;
+  background:#fff;border-radius:12px;border:1px solid #e6eefc;box-shadow:0 10px 26px rgba(35,74,135,0.18);margin-top:6px;max-height:220px;overflow:auto;padding:6px;position:relative;z-index:120; /* encima del mapa */;
 }
 .addr-results.hidden{display:none}
-.addr-item{padding:8px;border-radius:8px;cursor:pointer}
+.addr-item{padding:10px 12px;border-radius:10px;cursor:pointer}
 .addr-item:hover{background:#f6fbff}
 
 /* preview grid */
 .preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-top:8px}
 .preview-grid .preview{
-  position:relative;border-radius:8px;overflow:hidden;background:#fafcff;border:1px solid #e6eefc;height:92px;display:flex;align-items:center;justify-content:center;
+  position:relative;border-radius:12px;overflow:hidden;background:#fafcff;border:1px solid #e6eefc;height:110px;display:flex;align-items:center;justify-content:center;
 }
 .preview img{width:100%;height:100%;object-fit:cover;display:block}
 .preview .del{
@@ -160,14 +162,48 @@ textarea{resize:vertical;min-height:80px;padding-top:12px}
 
 /* file picker */
 .file-picker{display:flex;flex-direction:column;gap:8px}
-.file-btn{padding:10px 12px;border-radius:10px;border:1px dashed #e6eefc;background:#fff;cursor:pointer;font-weight:700;color:var(--blue);display:inline-block}
+.file-btn{padding:12px 14px;border-radius:12px;border:2px dashed #e6eefc;background:#fff;cursor:pointer;font-weight:700;color:var(--blue);display:inline-block}
 .file-note{font-size:13px;color:var(--muted)}
 
 /* phone input group */
 .phone-row{display:flex;flex-direction:column;gap:6px}
 .phone-input-group{display:flex;align-items:center;gap:0;max-width:340px}
-.phone-prefix{display:inline-flex;align-items:center;justify-content:center;background:#eef8ff;color:var(--blue);padding:10px 12px;border:1px solid #e6eefc;border-right:none;border-radius:8px 0 0 8px;font-weight:700}
-.phone-input-group input[type="tel"]{padding:10px;border:1px solid #e6eefc;border-left:none;border-radius:0 8px 8px 0;flex:1;min-width:0}
+.phone-prefix{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#eef8ff;
+  color:var(--blue);
+  padding:12px 14px; /* un poco más alto */
+  border:1px solid #e6eefc;
+  border-right:none;
+  border-radius:8px 0 0 8px;
+  font-weight:700;
+  height:46px;
+  line-height:1;
+}
+/* Aseguramos explícitamente que el input NO tenga redondeo en la izquierda */
+.phone-input-group input[type="tel"]{
+  padding:12px 12px;
+  border:1px solid #e6eefc;
+  border-left:none;
+  border-top-left-radius:0 !important;
+  border-bottom-left-radius:0 !important;
+  border-top-right-radius:8px;
+  border-bottom-right-radius:8px;
+  height:46px;
+  box-sizing:border-box;
+}
+
+/* En modo compacto ajustar también la altura para mantener proporción */
+body.compact .phone-prefix{
+  padding:9px 10px;
+  height:40px;
+}
+body.compact .phone-input-group input[type="tel"]{
+  padding:9px 10px;
+  height:40px;
+}
 
 /* horario UI */
 .horario-ui .horario-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -179,8 +215,8 @@ textarea{resize:vertical;min-height:80px;padding-top:12px}
 /* button */
 .btn-primary{
   background:var(--blue);
-  color:#fff;padding:12px 18px;border:none;border-radius:10px;font-weight:800;cursor:pointer;
-  box-shadow:0 8px 20px rgba(52,152,219,0.18);
+  color:#fff;padding:12px 18px;border:none;border-radius:12px;font-weight:800;cursor:pointer;
+  box-shadow:0 10px 26px rgba(52,152,219,0.22);
 }
 .btn-primary:hover{background:var(--blue-600)}
 
@@ -205,12 +241,195 @@ textarea{resize:vertical;min-height:80px;padding-top:12px}
 .nav-item .nav-label{display:inline-block}
 .nav-item.active{background:#eef6ff;color:var(--blue)}
 
-/* responsive */
-@media (max-width:900px){
-  .grid-2{grid-template-columns:1fr}
-  main.content{padding:14px}
-  .form-card{padding:14px}
-  .brand-logo{width:40px}
-  .bottom-nav{left:12px;transform:none;width:calc(100% - 24px);justify-content:space-around}
-  .nav-item .nav-label{display:none}
+/* Estilo consistente para campos de dirección y buscador */
+#dirExactaCamp, #dirExactaCentro,
+#addressCamp, #addressCentro {
+  width:100%;
+  padding:13px 14px;
+  border-radius:14px;
+  border:1px solid #dfe8f6;
+  background:linear-gradient(180deg,#fff, #fbfdff);
+  font-size:15px;
+  outline:none;
+  transition: box-shadow .15s ease, border-color .15s ease;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+}
+#dirExactaCamp:focus, #dirExactaCentro:focus,
+#addressCamp:focus, #addressCentro:focus {
+  border-color: var(--blue);
+  box-shadow: 0 8px 22px rgba(43,108,176,0.12);
+}
+
+/* Aumentar z-index de resultados (sobre mapa) y ajustar separación del mapa para no tapar textos */
+.addr-results{
+  z-index:120; /* encima del mapa */
+}
+
+/* aumentar margen inferior del mapa para evitar solapamientos con label/nota/inputs siguientes */
+.map-wrap{
+  margin-top:6px;
+  margin-bottom:18px; /* espacio reducido: ya no hace falta tanto vacío */
+  position:relative;
+  z-index:0;
+}
+.map-picker{
+  z-index:0;
+}
+
+/* cuando el campo de número (o su nota) sigue inmediatamente al mapa, dar separación extra */
+.map-wrap + label,
+.map-wrap + .example-note,
+.map-wrap + .example-note + .phone-row,
+.map-wrap + .phone-row {
+  margin-top:8px; /* suficiente separación visual sin dejar gran hueco */
+}
+
+/* toolbar del mapa: separación y alineación (mantenerlo separado del buscador) */
+.map-toolbar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-top:10px; /* ajustar ligeramente para compactar */
+}
+
+/* estilo específico para labels que deben ser claramente visibles */
+.field-label {
+  display:block;
+  margin:10px 0 6px;
+  color:#243240;
+  font-weight:700;
+  position:relative;
+  z-index:320; /* encima del mapa */
+  background:transparent; /* sin fondo tipo "pill" */
+  padding:0;
+}
+
+/* ejemplo nota: elevar por encima del mapa si aparece justo después */
+.map-wrap + .example-note,
+.map-wrap + .example-note + .phone-row,
+.map-wrap + .phone-row {
+  position: relative;
+  z-index: 310;
+}
+
+/* asegurar que el label inmediatamente posterior al mapa también esté visible (sin cambiar su apariencia) */
+.map-wrap + label.field-label {
+  position: relative;
+  z-index: 320;
+  background: transparent;
+  padding: 0;
+}
+
+/* Asegurar estilo consistente para campos dentro de pasos (fallback) */
+.step input[type="text"],
+.step input[type="tel"],
+.step input[type="url"],
+.step input[type="date"],
+.step input[type="time"],
+.step textarea,
+.step input[type="search"]{
+  padding:13px 14px;
+  border-radius:14px;
+  border:1px solid #dfe8f6;
+  background:linear-gradient(180deg,#fff, #fbfdff);
+  font-size:15px;
+  outline:none;
+  transition: box-shadow .15s ease, border-color .15s ease;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+}
+.step input:focus, .step textarea:focus{
+  border-color: var(--blue);
+  box-shadow: 0 8px 22px rgba(43,108,176,0.12);
+}
+
+/* Estilos explícitos para Título y Categorías (asegura apariencia consistente) */
+#camp_title,
+#centro_title,
+.cat-input input,
+#catInputCamp,
+#catInputCentro {
+  padding:13px 14px;
+  border-radius:14px;
+  border:1px solid #dfe8f6;
+  background:linear-gradient(180deg,#fff, #fbfdff);
+  font-size:15px;
+  outline:none;
+  transition: box-shadow .15s ease, border-color .15s ease;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+}
+#camp_title:focus,
+#centro_title:focus,
+.cat-input input:focus,
+#catInputCamp:focus,
+#catInputCentro:focus {
+  border-color: var(--blue);
+  box-shadow: 0 8px 22px rgba(43,108,176,0.12);
+}
+
+/* Mantener separación visual entre label y campo cuando el input está inmediatamente debajo */
+label + input,
+label + .cat-input,
+label + .example-note {
+  margin-top:6px;
+}
+
+/* Compact mode: reduce paddings, fuentes y alturas para una vista más "alejada" */
+body.compact{
+  font-size:14px; /* base más pequeña */
+}
+body.compact .form-card{
+  padding:18px;
+  max-width:1000px;
+}
+body.compact .form-card h2{ font-size:18px; margin-bottom:10px; }
+
+/* Inputs y textarea más compactos */
+body.compact input[type="text"],
+body.compact input[type="date"],
+body.compact input[type="time"],
+body.compact input[type="email"],
+body.compact input[type="tel"],
+body.compact input[type="url"],
+body.compact textarea,
+body.compact input[type="search"]{
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:14px;
+}
+body.compact textarea{ min-height:90px; }
+
+/* Botones más compactos */
+body.compact .btn-primary{ padding:10px 14px; font-size:14px; border-radius:10px; }
+body.compact .btn-small{ padding:6px 8px; font-size:13px; }
+
+/* Tabs y cabecera compactos */
+body.compact .topbar{ height:56px; padding:10px 14px; }
+body.compact .brand-logo{ width:40px; }
+body.compact .tabs .tab{ padding:6px 10px; font-size:13px; }
+
+/* Mapas y previews más pequeños */
+body.compact .map-picker{ height:220px !important; } /* override inline height */
+body.compact .preview-grid .preview{ height:90px; }
+
+/* Meta row y slider: ajustar altura/espacio para compacto */
+body.compact .meta-row{ gap:8px; }
+body.compact #metaText{ width:130px; padding:8px; font-size:14px; }
+
+/* Chips y sugerencias: reducir padding */
+body.compact .chip{ padding:6px 8px; font-size:13px; }
+body.compact .suggestions .s-item{ padding:6px; }
+
+/* Phone group: ajustar tamaño visual manteniendo unión con prefijo */
+body.compact .phone-prefix{ padding:8px 10px; font-size:14px; }
+body.compact .phone-input-group input[type="tel"]{ padding:8px; font-size:14px; }
+
+/* Reducir márgenes verticales generales */
+body.compact .form .horario-ui .horario-row,
+body.compact .form .grid-2 > div { margin-bottom:6px; }
+
+/* Media query: en pantallas pequeñas mantener compact pero no exagerar */
+@media (max-width:600px){
+  body.compact .map-picker{ height:180px !important; }
+  body.compact .preview-grid .preview{ height:76px; }
+  body.compact { font-size:13px; }
 }

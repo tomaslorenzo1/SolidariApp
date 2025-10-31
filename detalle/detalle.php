@@ -151,19 +151,38 @@ if (!empty($data['imagenes'])) {
         <div class="modal-body">
           <p>Seleccioná una opción:</p>
           <div class="m-actions">
-            <button class="btn-light" id="donarPresencial">Donar presencialmente</button>
-            <button class="btn-primary" id="donarDinero">Donar dinero</button>
+            <button class="btn-light" id="donarPresencial" aria-pressed="false">Donar presencialmente</button>
+            <button class="btn-primary" id="donarDinero" aria-pressed="false">Donar dinero</button>
           </div>
+
           <div class="qr-area hidden" id="qrArea">
-            <p>Escaneá el QR con tu app bancaria o Mercado Pago.</p>
+            <!-- Mensaje dinámico -->
+            <p id="donMessage" class="don-message" role="status"></p>
+
+            <!-- QR -->
             <img id="qrImg" alt="QR de pago" width="220" height="220" class="hidden" />
             <canvas id="qrCanvas" width="220" height="220" aria-label="QR" class="hidden"></canvas>
+
+            <!-- Datos para donación con dinero (Alias / CVU / Link) -->
             <div class="don-data hidden" id="donData" style="text-align:left;width:100%;max-width:360px">
               <div style="margin-top:6px"><strong>Alias:</strong> <span id="aliasText">-</span></div>
               <div style="margin-top:4px"><strong>CVU:</strong> <span id="cvuText">-</span></div>
               <div id="mpLinkRow" style="margin-top:6px" class="hidden"><strong>Link:</strong> <a id="mpLink" href="#" target="_blank" rel="noopener">Abrir pago</a></div>
             </div>
-            <div class="qr-note">Si la campaña provee un link de pago, generaremos un QR que abre el checkout de Mercado Pago. También verás Alias y CVU para transferencia.</div>
+
+            <!-- Datos para donación presencial (Contacto / Whatsapp) -->
+            <div class="contact-data hidden" id="contactData" style="text-align:left;width:100%;max-width:360px">
+              <div style="margin-top:6px"><strong>Contacto:</strong> <span id="contactText">-</span></div>
+              <div style="margin-top:6px"><strong>Whatsapp link:</strong> <a id="waLink" href="#" target="_blank" rel="noopener">Abrir WhatsApp</a></div>
+            </div>
+
+            <!-- Mensajes específicos según opción -->
+            <div class="qr-note hidden" id="qrNoteDinero">
+              Si el creador provee un link de pago, generaremos un QR que abre el checkout de Mercado Pago. También verás Alias y CVU para transferencia.
+            </div>
+            <div class="qr-note hidden" id="qrNotePresencial">
+              Si el creador provee un link de whatsapp, generaremos un QR que nos redirige al chat.
+            </div>
           </div>
         </div>
       </div>
@@ -178,7 +197,9 @@ if (!empty($data['imagenes'])) {
         lng: <?php echo json_encode($data['lng'] ?? null); ?>,
         alias_mp: <?php echo json_encode($data['alias_mp'] ?? ''); ?>,
         cvu_mp: <?php echo json_encode($data['cvu_mp'] ?? ''); ?>,
-        link_pago_mp: <?php echo json_encode($data['link_pago_mp'] ?? ''); ?>
+        link_pago_mp: <?php echo json_encode($data['link_pago_mp'] ?? ''); ?>,
+        whatsapp_link: <?php echo json_encode($data['whatsapp_link'] ?? ''); ?>,
+        telefono_contacto: <?php echo json_encode($data['telefono'] ?? $data['telefono_contacto'] ?? ''); ?>
       };
     </script>
     <script src="detalle.js"></script>

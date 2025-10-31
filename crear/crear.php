@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $alias_mp = trim($_POST['alias_mp'] ?? '');
     $cvu_mp = trim($_POST['cvu_mp'] ?? '');
     $link_pago_mp = trim($_POST['link_pago_mp'] ?? '');
+    $whatsapp_link_raw = trim($_POST['whatsapp_link'] ?? '');
 
     // sanitizaciones básicas
     // telefono: extraer sólo dígitos y agregar prefijo si no viene
@@ -63,6 +64,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } else {
         $telefono_display = '';
+    }
+
+    // WhatsApp: normalizar link y extraer número
+    $wa_digits = preg_replace('/\D/', '', $whatsapp_link_raw);
+    // Si link vacío pero hubo teléfono, usar ese para generar link
+    if ($whatsapp_link_raw === '' && $telefono !== '') {
+        $wa_digits = ltrim($telefono, '+');
+    }
+    $whatsapp_numero = '';
+    $whatsapp_link = '';
+    if ($wa_digits !== '') {
+        // prefijo 54 si no está
+        if (strpos($wa_digits, '54') !== 0) {
+            $wa_digits = '54' . ltrim($wa_digits, '0');
+        }
+        $whatsapp_numero = $wa_digits;
+        $whatsapp_link = 'https://wa.me/' . $wa_digits;
     }
 
     // meta: quitar comas y demás para almacenar número limpio (si está pensado como número)
@@ -169,6 +187,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $upd = $conn->prepare("UPDATE `campañas` SET link_pago_mp = ? WHERE id_campaña = ?");
                     if ($upd) { $upd->bind_param("si", $link_pago_mp, $last_id); $upd->execute(); $upd->close(); }
                 }
+            }
+        }
+
+        // guardar teléfono y whatsapp si existen las columnas
+        if (!empty($last_id)) {
+            $check = $conn->query("SHOW COLUMNS FROM `campañas` LIKE 'telefono_contacto'");
+            if ($check && $check->num_rows > 0 && $telefono_display !== '') {
+                $upd = $conn->prepare("UPDATE `campañas` SET telefono_contacto = ? WHERE id_campaña = ?");
+                if ($upd) { $upd->bind_param("si", $telefono_display, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `campañas` LIKE 'whatsapp_link'");
+            if ($check && $check->num_rows > 0 && $whatsapp_link !== '') {
+                $upd = $conn->prepare("UPDATE `campañas` SET whatsapp_link = ? WHERE id_campaña = ?");
+                if ($upd) { $upd->bind_param("si", $whatsapp_link, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `campañas` LIKE 'whatsapp_numero'");
+            if ($check && $check->num_rows > 0 && $whatsapp_numero !== '') {
+                $upd = $conn->prepare("UPDATE `campañas` SET whatsapp_numero = ? WHERE id_campaña = ?");
+                if ($upd) { $upd->bind_param("si", $whatsapp_numero, $last_id); $upd->execute(); $upd->close(); }
             }
         }
 
@@ -307,6 +344,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // guardar alias/cvu/link y teléfono/whatsapp si existen las columnas
+        if (!empty($last_id)) {
+            $check = $conn->query("SHOW COLUMNS FROM `centros_donacion` LIKE 'alias_mp'");
+            if ($check && $check->num_rows > 0 && $alias_mp !== '') {
+                $upd = $conn->prepare("UPDATE `centros_donacion` SET alias_mp = ? WHERE id_centro = ?");
+                if ($upd) { $upd->bind_param("si", $alias_mp, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `centros_donacion` LIKE 'cvu_mp'");
+            if ($check && $check->num_rows > 0 && $cvu_mp !== '') {
+                $upd = $conn->prepare("UPDATE `centros_donacion` SET cvu_mp = ? WHERE id_centro = ?");
+                if ($upd) { $upd->bind_param("si", $cvu_mp, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `centros_donacion` LIKE 'link_pago_mp'");
+            if ($check && $check->num_rows > 0 && $link_pago_mp !== '') {
+                $upd = $conn->prepare("UPDATE `centros_donacion` SET link_pago_mp = ? WHERE id_centro = ?");
+                if ($upd) { $upd->bind_param("si", $link_pago_mp, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `centros_donacion` LIKE 'telefono_contacto'");
+            if ($check && $check->num_rows > 0 && $telefono_display !== '') {
+                $upd = $conn->prepare("UPDATE `centros_donacion` SET telefono_contacto = ? WHERE id_centro = ?");
+                if ($upd) { $upd->bind_param("si", $telefono_display, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `centros_donacion` LIKE 'whatsapp_link'");
+            if ($check && $check->num_rows > 0 && $whatsapp_link !== '') {
+                $upd = $conn->prepare("UPDATE `centros_donacion` SET whatsapp_link = ? WHERE id_centro = ?");
+                if ($upd) { $upd->bind_param("si", $whatsapp_link, $last_id); $upd->execute(); $upd->close(); }
+            }
+            $check = $conn->query("SHOW COLUMNS FROM `centros_donacion` LIKE 'whatsapp_numero'");
+            if ($check && $check->num_rows > 0 && $whatsapp_numero !== '') {
+                $upd = $conn->prepare("UPDATE `centros_donacion` SET whatsapp_numero = ? WHERE id_centro = ?");
+                if ($upd) { $upd->bind_param("si", $whatsapp_numero, $last_id); $upd->execute(); $upd->close(); }
+            }
+        }
+
         // manejo de imágenes: guardarlas en /uploads/centros/
         if (!empty($_FILES['imagenes']) && isset($_FILES['imagenes']['name']) && count($_FILES['imagenes']['name']) > 0 && !empty($last_id)) {
             $saved = [];
@@ -381,6 +452,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="message <?php echo $tipo_msg === 'success' ? 'success' : 'error'; ?>">
           <?php echo htmlspecialchars($mensaje); ?>
         </div>
+
+        <?php if ($tipo_msg === 'success'): ?>
+          <div style="margin:12px 0;">
+            <a href="../inicio/inicio.html" class="btn-primary" style="text-decoration:none;display:inline-block;padding:10px 14px;border-radius:10px;">Volver a inicio</a>
+          </div>
+          <script>
+            // redirección automática opcional tras 3s para que el flujo continúe
+            setTimeout(() => { window.location.href = '../inicio/inicio.html'; }, 3000);
+          </script>
+        <?php endif; ?>
+
       <?php endif; ?>
 
       <?php
@@ -457,13 +539,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Donaciones de dinero (opcional)</label>
         <div class="grid-2">
           <div>
-            <input type="text" name="alias_mp" placeholder="Alias Mercado Pago (ej: DONA.ABRAZOS.SA)" />
+            <input type="text" id="alias_mp" name="alias_mp" placeholder="Alias Mercado Pago (ej: DONA.ABRAZOS.SA)" />
           </div>
           <div>
-            <input type="text" name="cvu_mp" placeholder="CVU (22 dígitos)" />
+            <input type="text" id="cvu_mp" name="cvu_mp" placeholder="CVU (22 dígitos)" />
           </div>
         </div>
-        <input type="text" name="link_pago_mp" placeholder="Link de pago de Mercado Pago (opcional)" />
+        <input type="text" id="link_pago_mp" name="link_pago_mp" placeholder="Link de pago de Mercado Pago (opcional)" />
 
         <label>Horario de atención</label>
         <div class="horario-ui">
@@ -477,10 +559,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="hidden" name="horario" id="horarioHiddenCamp">
         </div>
 
+        <!-- Antes: Dirección (buscador) then Dirección exacta -->
+        <!-- Ahora mostramos primero el campo exacto (se envía) y luego el buscador que ayuda a ubicar en el mapa -->
+
+        <label>Dirección exacta</label>
+        <input id="dirExactaCamp" name="direccion" placeholder="Calle 123, Ciudad, Provincia" required>
+
         <label>Dirección (buscador)</label>
-        <!-- Nótese: name cambiado a "direccion" para que PHP lo reciba correctamente -->
-        <input id="addressCamp" name="direccion" placeholder="Ingresá la dirección y seleccioná una opción" autocomplete="off" required>
+        <input id="addressCamp" placeholder="Ingresá la dirección y seleccioná una opción" autocomplete="off">
         <div id="addrResultsCamp" class="addr-results hidden" aria-hidden="true"></div>
+
         <input type="hidden" name="lat" id="latCamp">
         <input type="hidden" name="lng" id="lngCamp">
         <div class="map-wrap">
@@ -491,8 +579,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div id="mapCamp" class="map-picker" aria-label="Selector de ubicación" style="height:260px;border-radius:12px;border:1px solid #e6eefc;margin-top:8px"></div>
         </div>
 
-        <label>Teléfono de contacto</label>
+        <!-- Reemplazo: label inmediatamente antes de .phone-row; example-note dentro de .phone-row -->
+        <label for="phoneLocalCamp" class="field-label">Número de contacto</label>
         <div class="phone-row">
+          <div class="example-note">Ej: 112223333</div>
           <div class="phone-input-group">
             <span class="phone-prefix">+54</span>
             <input type="tel" id="phoneLocalCamp" placeholder="Ej: 112223333" pattern="\d*" inputmode="numeric" aria-label="Teléfono local">
@@ -500,6 +590,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="file-note">Ingresá solo el número sin prefijo ni espacios.</div>
           <input type="hidden" name="telefono" id="telefonoHiddenCamp">
         </div>
+
+        <label>Link WhatsApp</label>
+        <input type="url" name="whatsapp_link" id="waLinkCamp" placeholder="https://wa.me/5491122233333?text=Hola" />
 
         <div style="margin-top:14px;">
           <button class="btn-primary" type="submit">Crear campaña</button>
@@ -533,9 +626,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="hidden" name="categorias_hidden" id="categorias_hidden_centro">
         </div>
 
+        <!-- Direccion: primero campo exacto, luego buscador -->
+        <label>Dirección exacta</label>
+        <input id="dirExactaCentro" name="direccion" placeholder="Calle 123, Ciudad, Provincia" required>
+
         <label>Dirección (buscador)</label>
-        <input id="addressCentro" name="direccion" placeholder="Ingresá la dirección y seleccioná una opción" autocomplete="off" required>
+        <input id="addressCentro" placeholder="Ingresá la dirección y seleccioná una opción" autocomplete="off">
         <div id="addrResultsCentro" class="addr-results hidden" aria-hidden="true"></div>
+
         <input type="hidden" name="lat" id="latCentro">
         <input type="hidden" name="lng" id="lngCentro">
         <div class="map-wrap">
@@ -558,8 +656,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <input type="hidden" name="horario" id="horarioHiddenCentro">
         </div>
 
-        <label>Teléfono de contacto</label>
+        <!-- Para el formulario Centro: mismo ajuste -->
+        <label for="phoneLocalCentro" class="field-label">Número de contacto</label>
         <div class="phone-row">
+          <div class="example-note">Ej: 112223333</div>
           <div class="phone-input-group">
             <span class="phone-prefix">+54</span>
             <input type="tel" id="phoneLocalCentro" placeholder="Ej: 112223333" pattern="\d*" inputmode="numeric" aria-label="Teléfono local">
@@ -567,6 +667,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="file-note">Ingresá solo el número sin prefijo ni espacios.</div>
           <input type="hidden" name="telefono" id="telefonoHiddenCentro">
         </div>
+
+        <label>Link WhatsApp</label>
+        <input type="url" name="whatsapp_link" id="waLinkCentro" placeholder="https://wa.me/5491122233333?text=Hola" />
+
+        <label>Donaciones de dinero (opcional)</label>
+        <div class="grid-2">
+          <div>
+            <input type="text" id="alias_mp_c" name="alias_mp" placeholder="Alias Mercado Pago (ej: DONA.ABRAZOS.SA)" />
+          </div>
+          <div>
+            <input type="text" id="cvu_mp_c" name="cvu_mp" placeholder="CVU (22 dígitos)" />
+          </div>
+        </div>
+        <input type="text" id="link_pago_mp_c" name="link_pago_mp" placeholder="Link de pago de Mercado Pago (opcional)" />
 
         <div style="margin-top:14px;">
           <button class="btn-primary" type="submit">Crear centro</button>
@@ -583,7 +697,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <span class="nav-label">Inicio</span>
     </a>
 
-    <a href="../panel/panel.html" class="nav-item" title="Panel">
+    <a href="../panel/panel.php" class="nav-item" title="Panel">
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z"/></svg>
       <span class="nav-label">Panel</span>
     </a>

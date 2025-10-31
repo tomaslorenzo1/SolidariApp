@@ -1,5 +1,7 @@
 // crear/crear.js
 document.addEventListener('DOMContentLoaded', () => {
+  // modo compacto por defecto: reduce tamaños/paddings para que la UI se vea "más alejada"
+  document.body.classList.add('compact');
   // Tabs
   const tabCamp = document.getElementById('tabCamp');
   const tabCentro = document.getElementById('tabCentro');
@@ -14,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (formCent) formCent.classList.add('hidden');
       tabCamp.setAttribute('aria-selected','true'); tabCentro.setAttribute('aria-selected','false');
       window.scrollTo({top:0, behavior:'smooth'});
-      setTimeout(() => { if (window._mapCamp && window._mapCamp.invalidate) window._mapCamp.invalidate(); }, 60);
+      // dar un poco más de tiempo y asegurar invalidate cuando se muestre la pestaña
+      setTimeout(() => { if (window._mapCamp && window._mapCamp.invalidate) window._mapCamp.invalidate(); }, 150);
     });
     tabCentro.addEventListener('click', () => {
       tabCentro.classList.add('active'); tabCamp.classList.remove('active');
@@ -22,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (formCamp) formCamp.classList.add('hidden');
       tabCentro.setAttribute('aria-selected','true'); tabCamp.setAttribute('aria-selected','false');
       window.scrollTo({top:0, behavior:'smooth'});
-      setTimeout(() => { if (window._mapCentro && window._mapCentro.invalidate) window._mapCentro.invalidate(); }, 60);
+      // dar un poco más de tiempo y asegurar invalidate cuando se muestre la pestaña
+      setTimeout(() => { if (window._mapCentro && window._mapCentro.invalidate) window._mapCentro.invalidate(); }, 150);
     });
   }
 
@@ -184,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (metaRange) updateRangeBackground(metaRange);
 
   /* ------------------ ADDRESS AUTOCOMPLETE (Nominatim) ------------------ */
-  function setupAddressAutocomplete(inputId, resultsId, latId, lngId, onSelect) {
+  function setupAddressAutocomplete(inputId, resultsId, latId, lngId, onSelect, copyToExactId) {
     const input = document.getElementById(inputId);
     const results = document.getElementById(resultsId);
     const latField = document.getElementById(latId);
@@ -200,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!q) { if (results) { results.classList.add('hidden'); results.innerHTML = ''; } return; }
       clearTimeout(timer);
       timer = setTimeout(() => {
-        // Nominatim query
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(q)}`, {
+        // Usar proxy local para evitar problemas CORS / User-Agent
+        fetch(`geo_proxy.php?q=${encodeURIComponent(q)}&limit=6`, {
           headers: { 'Accept': 'application/json' }
         }).then(r => r.json()).then(data => {
           if (!results) return;
@@ -216,6 +220,11 @@ document.addEventListener('DOMContentLoaded', () => {
             div.dataset.lon = item.lon;
             div.addEventListener('click', () => {
               input.value = display;
+              // copiar también al campo "dirección exacta" que se envía en el form
+              if (copyToExactId) {
+                const exact = document.getElementById(copyToExactId);
+                if (exact) exact.value = display;
+              }
               if (latField) latField.value = item.lat;
               if (lngField) lngField.value = item.lon;
               if (typeof onSelect === 'function') {
@@ -229,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           results.classList.remove('hidden');
         }).catch(err => {
-          console.error('Nominatim error', err);
+          console.error('Nominatim / proxy error', err);
         });
       }, 350);
     });
@@ -312,12 +321,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window._mapCamp && sel && typeof sel.lat === 'number' && typeof sel.lng === 'number') {
       window._mapCamp.setPosition(sel.lat, sel.lng);
     }
-  });
+  }, 'dirExactaCamp'); // copiar a campo de envío
+
   setupAddressAutocomplete('addressCentro','addrResultsCentro','latCentro','lngCentro', (sel) => {
     if (window._mapCentro && sel && typeof sel.lat === 'number' && typeof sel.lng === 'number') {
       window._mapCentro.setPosition(sel.lat, sel.lng);
     }
-  });
+  }, 'dirExactaCentro'); // copiar a campo de envío
 
   /* ------------------ IMAGE PREVIEW, MULTI-ADD, REMOVE & DRAG-REORDER ------------------ */
   function createFileManager(inputId, previewId, maxFiles = 6) {
@@ -443,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container || !list || !hidden) return;
 
     // limpiar UI previa
+    // vaciamos pero reusaremos list y hidden (los reinsertamos después)
     container.innerHTML = '';
 
     // días de la semana
@@ -489,7 +500,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const timeRow = document.createElement('div');
     timeRow.className = 'horario-row';
-    timeRow.style.gap = '8px';
+    timeRow.style.display = 'flex';
+    timeRow.style.gap = '12px';
+    timeRow.style.alignItems = 'flex-start';
+
+    // anotaciones/labels pequeñas sobre cada campo
+    const openLabel = document.createElement('div');
+    openLabel.className = 'file-note';
+    openLabel.textContent = 'Horario de apertura';
+
+    const closeLabel = document.createElement('div');
+    closeLabel.className = 'file-note';
+    closeLabel.textContent = 'Horario de cierre';
 
     const startInput = document.createElement('input');
     startInput.type = 'time';
@@ -503,15 +525,32 @@ document.addEventListener('DOMContentLoaded', () => {
     addBtn.className = 'btn-small';
     addBtn.textContent = 'Agregar rango';
 
-    timeRow.append(startInput, endInput, addBtn);
+    // columna central con inputs apilados (sin el botón)
+    const inputsCol = document.createElement('div');
+    inputsCol.style.display = 'flex';
+    inputsCol.style.flexDirection = 'column';
+    inputsCol.style.flex = '1';
+    inputsCol.style.gap = '8px';
+    inputsCol.appendChild(openLabel);
+    inputsCol.appendChild(startInput);
+    inputsCol.appendChild(closeLabel);
+    inputsCol.appendChild(endInput);
+
+    // timeRow ahora solo contiene los inputs (el botón se coloca después del info)
+    timeRow.appendChild(inputsCol);
 
     const info = document.createElement('div');
     info.className = 'file-note';
     info.textContent = 'Seleccioná los días y el rango horario, luego presioná Agregar rango';
 
+    // insertamos controles en este orden:
+    // 1) días, 2) inputs apilados, 3) info, 4) botón agregar, 5) lista de chips, 6) hidden
     container.appendChild(daysRow);
     container.appendChild(timeRow);
     container.appendChild(info);
+    container.appendChild(addBtn);      // <-- botón justo debajo del texto informativo
+    container.appendChild(list);        // <-- chips aparecerán debajo del botón
+    container.appendChild(hidden);
 
     function renderList() {
       list.innerHTML = '';
@@ -629,12 +668,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function moveWithPrevLabel(el, step){
       if (!el) return;
-      const label = el.previousElementSibling && el.previousElementSibling.tagName === 'LABEL' ? el.previousElementSibling : null;
+      // si el selector apunta a un input interno (ej. input file), preferimos mover su contenedor visible
+      // (si existe un ancestor con clase file-picker o cat-input o map-wrap, usar ese)
+      // Añadimos phone-row / phone-input-group, horario-ui y contenedores de meta/fechas
+      // así movemos todo el bloque de horario junto con sus chips.
+      const preferContainers = ['file-picker','cat-input','map-wrap','phone-row','phone-input-group','horario-ui','meta-row','range-wrap','grid-2'];
+      let container = el;
+      for (const cls of preferContainers) {
+        const anc = el.closest && el.closest('.' + cls);
+        if (anc) { container = anc; break; }
+      }
+      // si el elemento a mover es el preview o addr-results, moverlo tal cual
+      const label = container.previousElementSibling && container.previousElementSibling.tagName === 'LABEL' ? container.previousElementSibling : null;
       if (label) step.appendChild(label);
-      step.appendChild(el);
+      step.appendChild(container);
     }
 
     const which = stepsConfig;
+    // mover en el orden exacto indicado por configuration
     which.step1.forEach(sel => {
       const el = form.querySelector(sel);
       if (el) moveWithPrevLabel(el, steps[0]);
@@ -650,7 +701,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // mover submit si existe al final del paso 3
     const submitBtn = form.querySelector('button.btn-primary[type="submit"]');
-    if (submitBtn) steps[2].appendChild(submitBtn.parentElement ? submitBtn.parentElement : submitBtn);
+    // asegurarse de mover solo el botón (no su parentElement) para no romper el submit nativo
+    if (submitBtn) steps[2].appendChild(submitBtn);
+
+    // --- NUEVO: mover nodos sobrantes (evita que queden campos fuera del stepper) ---
+    // los nodos que queden como hijos directos del form (excepto status/stepper/nav) los colocamos en el paso 3
+    const reserved = new Set([status, stepper]);
+    // nav será agregado al final; si ya existe, incluirlo en reserved
+    // Mover cualquier otro child al paso 3 garantiza que el único contenido visible esté en los steps.
+    Array.from(form.children).forEach(ch => {
+      if (reserved.has(ch)) return;
+      // evitar mover el propio paso (están dentro stepper), y evitar mover inputs ocultos que ya fueron movidos
+      // en la mayoría de casos, si el nodo no es el stepper/status lo queremos en el paso 3
+      steps[2].appendChild(ch);
+    });
+    // --- FIN NUEVO ---
+
+    // asegurar que el botón submit quede siempre AL FINAL del paso 3
+    // garantizar que el botón esté al final del paso 3 (append nuevamente el botón si existe)
+    if (submitBtn) steps[2].appendChild(submitBtn);
 
     // estado y validación mínima
     let idx = 0;
@@ -661,6 +730,30 @@ document.addEventListener('DOMContentLoaded', () => {
       btnBack.style.display = idx===0? 'none' : 'inline-block';
       // cambiar texto botón en el último paso
       if (idx === 2) btnNext.style.display = 'none'; else btnNext.style.display = 'inline-block';
+      // Después de mostrar el paso, invalidar cualquier mapa dentro del step (con pequeño delay)
+      setTimeout(() => { invalidateMapsInStep(steps[idx]); }, 120);
+    }
+
+    // invalida mapas Leaflet presentes dentro de un step (busca .map-picker)
+    function invalidateMapsInStep(stepEl){
+      if (!stepEl) return;
+      const maps = stepEl.querySelectorAll('.map-picker');
+      maps.forEach(mEl => {
+        if (!mEl || !mEl.id) return;
+        // casos explícitos para las instancias creadas globalmente
+        if (mEl.id === 'mapCamp' && window._mapCamp && typeof window._mapCamp.invalidate === 'function') {
+          try { window._mapCamp.invalidate(); } catch(e) {}
+        } else if (mEl.id === 'mapCentro' && window._mapCentro && typeof window._mapCentro.invalidate === 'function') {
+          try { window._mapCentro.invalidate(); } catch(e) {}
+        } else {
+          // fallback: si la instancia de leaflet está en el objeto retornado (.map), intentar llamar directamente
+          try {
+            const inst = window['_' + mEl.id];
+            if (inst && inst.invalidate) inst.invalidate();
+            else if (inst && inst.map && typeof inst.map.invalidateSize === 'function') inst.map.invalidateSize();
+          } catch(e){}
+        }
+      });
     }
 
     function validateStep(){
@@ -698,29 +791,36 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUI();
   }
 
-  // configurar stepper para Campaña
+  // configurar stepper para Campaña (nuevo orden solicitado)
   setupStepper('formCampana', {
     step1: [
-      '#previewCamp',
+      // Fotos primero, luego título, descripción y categorías
+      'div.file-picker', '#previewCamp',
       '#camp_title',
-      '#catInputCamp', '#catSuggestCamp', '#catChipsCamp', '#categorias_hidden_camp',
-      'textarea[name="descripcion"]'
+      'form#formCampana textarea[name="descripcion"]',
+      'div.cat-input', '#categorias_hidden_camp'
     ],
     step2: [
-      '#addressCamp', '#addrResultsCamp', '#latCamp', '#lngCamp', '#mapCamp', '#btnGeoCamp',
-      '#telefonoHiddenCamp', '#phoneLocalCamp'
+      '#dirExactaCamp', '#addressCamp', '#addrResultsCamp',
+      'div.map-wrap', '#latCamp', '#lngCamp', '#btnGeoCamp',
+      'div.phone-row', '#telefonoHiddenCamp',
+      '#waLinkCamp'
     ],
     step3: [
-      '#metaRange', '#metaText',
+      // mover el bloque completo de meta (se incluye label + slider + campo numérico)
+      '.meta-row', 
+      // fechas (los inputs están dentro de .grid-2, preferContainers moverá el contenedor con su label)
       'input[name="fecha_inicio"]', 'input[name="fecha_fin"]',
-      '#horariosListCamp', '#horarioHiddenCamp',
-      'input[name="alias_mp"]', 'input[name="cvu_mp"]', 'input[name="link_pago_mp"]'
+      // donaciones (alias, cvu, link) en este orden
+      '#alias_mp', '#cvu_mp', '#link_pago_mp',
+      // horarios
+      '#horariosListCamp', '#horarioHiddenCamp'
     ],
     required: {
       title: '#camp_title',
       desc: 'form#formCampana textarea[name="descripcion"]',
       cats: '#categorias_hidden_camp',
-      dir: '#addressCamp', lat: '#latCamp', lng: '#lngCamp',
+      dir: '#dirExactaCamp', lat: '#latCamp', lng: '#lngCamp',
       extra: (form) => {
         const meta = form.querySelector('#metaText');
         const fi = form.querySelector('input[name="fecha_inicio"]');
@@ -733,26 +833,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // configurar stepper para Centro
+  // configurar stepper para Centro (nuevo orden solicitado)
   setupStepper('formCentro', {
     step1: [
-      '#previewCentro',
+      'div.file-picker', '#previewCentro',
       '#centro_title',
-      '#catInputCentro', '#catSuggestCentro', '#catChipsCentro', '#categorias_hidden_centro',
-      'form#formCentro textarea[name="descripcion"]'
+      'form#formCentro textarea[name="descripcion"]',
+      'div.cat-input', '#categorias_hidden_centro'
     ],
     step2: [
-      '#addressCentro', '#addrResultsCentro', '#latCentro', '#lngCentro', '#mapCentro', '#btnGeoCentro',
-      '#telefonoHiddenCentro', '#phoneLocalCentro'
+      '#dirExactaCentro', '#addressCentro', '#addrResultsCentro',
+      'div.map-wrap', '#latCentro', '#lngCentro', '#btnGeoCentro',
+      'div.phone-row', '#telefonoHiddenCentro',
+      '#waLinkCentro'
     ],
     step3: [
+      // meta completo
+      '.meta-row',
+      // fechas
+      'input[name="fecha_inicio"]', 'input[name="fecha_fin"]',
+      // donaciones (alias/cvu/link)
+      'form#formCentro input[name="alias_mp"]', 'form#formCentro input[name="cvu_mp"]', 'form#formCentro input[name="link_pago_mp"]',
+      // horarios
       '#horariosListCentro', '#horarioHiddenCentro'
     ],
     required: {
       title: '#centro_title',
       desc: 'form#formCentro textarea[name="descripcion"]',
       cats: '#categorias_hidden_centro',
-      dir: '#addressCentro', lat: '#latCentro', lng: '#lngCentro',
+      dir: '#dirExactaCentro', lat: '#latCentro', lng: '#lngCentro',
       extra: (form) => {
         const telH = form.querySelector('#telefonoHiddenCentro');
         const local = form.querySelector('#phoneLocalCentro');
@@ -778,6 +887,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const formCampEl = document.getElementById('formCampana');
   if (formCampEl) {
     formCampEl.addEventListener('submit', (e) => {
+      // sincronizar archivos seleccionados en el file-manager al input real antes de enviar
+      try { setFilesToInput('imgsCamp', fmCamp.getFilesArray()); } catch (err) { /* no-crítico */ }
       // phone
       const local = document.getElementById('phoneLocalCamp');
       const hiddenTel = document.getElementById('telefonoHiddenCamp');
@@ -785,6 +896,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const raw = (local.value || '').replace(/\D/g, '');
         hiddenTel.value = raw ? '+54' + raw : '';
       }
+      // small delay opcional para asegurar que input.files quede actualizado (suele no ser necesario)
+      // pero si alguna validación falla, evitamos submit prematuro
       // direccion: ensure lat/lng if chosen
       const adr = document.getElementById('addressCamp');
       const lat = document.getElementById('latCamp');
@@ -800,12 +913,22 @@ document.addEventListener('DOMContentLoaded', () => {
       // categories hidden set
       const hidden = document.getElementById('categorias_hidden_camp');
       if (hidden && !hidden.value) hidden.value = '';
+      // whatsapp: si ingresó un número pelado, convertir a link
+      const wa = document.getElementById('waLinkCamp');
+      if (wa && wa.value) {
+        const digits = wa.value.replace(/\D/g,'');
+        if (/^\d{8,}$/.test(digits)) {
+          wa.value = 'https://wa.me/' + (digits.startsWith('54')?digits:('54' + digits.replace(/^0+/g,'')));
+        }
+      }
     });
   }
 
   const formCentroEl = document.getElementById('formCentro');
   if (formCentroEl) {
     formCentroEl.addEventListener('submit', (e) => {
+      // sincronizar archivos seleccionados en el file-manager al input real antes de enviar
+      try { setFilesToInput('imgsCentro', fmCentro.getFilesArray()); } catch (err) { /* no-crítico */ }
       const local = document.getElementById('phoneLocalCentro');
       const hiddenTel = document.getElementById('telefonoHiddenCentro');
       if (local && hiddenTel) {
@@ -823,8 +946,65 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const hidden = document.getElementById('categorias_hidden_centro');
       if (hidden && !hidden.value) hidden.value = '';
+
+      const wa = document.getElementById('waLinkCentro');
+      if (wa && wa.value) {
+        const digits = wa.value.replace(/\D/g,'');
+        if (/^\d{8,}$/.test(digits)) {
+          wa.value = 'https://wa.me/' + (digits.startsWith('54')?digits:('54' + digits.replace(/^0+/g,'')));
+        }
+      }
     });
   }
+
+  // helper: asignar array de File[] a un input[type="file"]
+  function setFilesToInput(inputId, filesArray = []) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    try {
+      const dt = new DataTransfer();
+      (filesArray || []).forEach(f => { if (f instanceof File) dt.items.add(f); });
+      input.files = dt.files;
+    } catch (e) {
+      // algunos navegadores antiguos pueden no soportar DataTransfer()
+      console.warn('No se pudo sincronizar archivos en input', inputId, e);
+    }
+  }
+
+  // --- FIX: asegurar que el botón "Crear" realmente envíe el formulario ---
+  // Campaña
+  (function(){
+    const btn = document.querySelector('#formCampana button[type="submit"]');
+    if (btn) {
+      btn.addEventListener('click', (ev) => {
+        // prevenir cualquier comportamiento extraño y forzar sincronización + envío
+        ev.preventDefault();
+        try { setFilesToInput('imgsCamp', fmCamp.getFilesArray()); } catch(e){}
+        const form = document.getElementById('formCampana');
+        if (form) {
+          // usar requestSubmit si está disponible para respetar validaciones nativas
+          if (typeof form.requestSubmit === 'function') form.requestSubmit();
+          else form.submit();
+        }
+      });
+    }
+  })();
+
+  // Centro
+  (function(){
+    const btn = document.querySelector('#formCentro button[type="submit"]');
+    if (btn) {
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        try { setFilesToInput('imgsCentro', fmCentro.getFilesArray()); } catch(e){}
+        const form = document.getElementById('formCentro');
+        if (form) {
+          if (typeof form.requestSubmit === 'function') form.requestSubmit();
+          else form.submit();
+        }
+      });
+    }
+  })();
 
   /* Helper: escape html for suggestions */
   function escapeHtml(text = '') {

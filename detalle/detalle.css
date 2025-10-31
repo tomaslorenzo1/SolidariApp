@@ -72,6 +72,13 @@ main.content{flex:1 1 auto;padding:16px;max-width:1100px;margin:0 auto}
 .btn-primary{background:var(--blue);color:#fff;padding:12px 18px;border:none;border-radius:10px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(52,152,219,0.18)}
 .btn-primary:hover{background:var(--blue-600)}
 .btn-light{background:#eef6ff;color:#2b6cb0;padding:10px 14px;border:none;border-radius:10px;font-weight:800;cursor:pointer}
+.btn-light.selected,
+.btn-primary.selected{
+  /* estilo de botón "tildado" visual pero sin perder diseño */
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+  outline: 3px solid rgba(43,108,176,0.08);
+}
 .note{font-size:13px;color:var(--muted)}
 
 /* modal */
@@ -86,6 +93,68 @@ main.content{flex:1 1 auto;padding:16px;max-width:1100px;margin:0 auto}
 .qr-area{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:12px}
 .qr-area.hidden{display:none}
 .qr-note{font-size:12px;color:#6b7280}
+
+/* hidden class */
+.hidden{display:none !important}
+
+/* Estilos específicos para los botones del modal (neutros por defecto) */
+.m-actions .btn-primary,
+.m-actions .btn-light{
+  background:#eef6ff;
+  color:var(--blue);
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:800;
+  border:none;
+  cursor:pointer;
+  box-shadow:none;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+/* Estado seleccionado dentro del modal (azul) */
+.m-actions .btn-primary.selected,
+.m-actions .btn-light.selected{
+  background:var(--blue);
+  color:#fff;
+  box-shadow:0 8px 20px rgba(52,152,219,0.18);
+  transform:translateY(-1px);
+  outline:3px solid rgba(43,108,176,0.08);
+}
+
+/* Reducir espacio entre QR y bloques de datos */
+.qr-area{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px; /* antes 10px */
+  margin-top:12px;
+}
+
+/* Asegurar imagen QR compacta y con poco margen */
+.qr-area img,
+.qr-area canvas{
+  width:220px;
+  height:220px;
+  object-fit:contain;
+  margin:4px 0; /* reducir espacio */
+}
+
+/* Ajustes en los bloques de datos */
+.qr-area .don-data,
+.qr-area .contact-data{
+  text-align:left;
+  width:100%;
+  max-width:360px;
+  margin-top:6px;
+}
+
+/* Mensaje centrado (ya incluido, pequeño ajuste) */
+.don-message{
+  text-align:center;
+  font-weight:600;
+  margin:8px 0;
+  color:#243240;
+}
 
 /* responsive */
 @media (max-width:900px){
