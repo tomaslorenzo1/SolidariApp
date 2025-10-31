@@ -1,0 +1,29 @@
+/* estilos específicos para notificaciones */
+:root{--notif-unread:#eef6ff;--notif-accent:#3498db}
+#notifContainer{background:transparent;padding:8px 0}
+.notification-card{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  padding:12px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.06);
+  margin:10px auto;
+  max-width:1100px;
+  border:1px solid #f0f4f8;
+}
+.notification-card.unread{background:var(--notif-unread);border-left:4px solid var(--notif-accent)}
+.notification-avatar{flex:0 0 56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #eef6f9}
+.notification-body{flex:1 1 auto}
+.notification-title{font-weight:700;color:#16222a;margin:0;font-size:15px}
+.notification-text{margin:6px 0;color:#465157;font-size:14px;line-height:1.3}
+.notification-meta{display:flex;gap:8px;align-items:center;font-size:13px;color:#7b8a91}
+.notification-actions{display:flex;gap:8px;align-items:center}
+.btn-small{padding:6px 10px;border-radius:8px;border:none;background:#fff;color:#3498db;cursor:pointer;font-weight:700;border:1px solid #dbeefa}
+.btn-small.secondary{background:#f6f7fb;color:#556;border:1px solid #e6e9ee}
+.dot-unread{width:10px;height:10px;background:#e74c3c;border-radius:50%;display:inline-block}
+@media (max-width:720px){
+  .notification-card{padding:10px;gap:10px}
+  .notification-avatar{flex:0 0 48px;height:48px}
+}

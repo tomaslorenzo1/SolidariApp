@@ -707,7 +707,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <span class="nav-label">Crear</span>
     </a>
 
-    <a href="../foro/foro.html" class="nav-item" title="Foro">
+    <a href="../foros/foros.php" class="nav-item" title="Foro">
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v14l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
       <span class="nav-label">Foro</span>
     </a>

@@ -164,12 +164,28 @@ if ($conn) {
 
         $res = $conn->query("SELECT id_usuario, nombre, email, rol FROM usuarios ORDER BY id_usuario DESC LIMIT 1000");
         if ($res) while ($r = $res->fetch_assoc()) $allUsers[] = $r;
+
+        // Añadir además las campañas/centros creadas por este admin (historial personal)
+        $stmt = $conn->prepare("SELECT id_campaña, titulo, estado, fecha_inicio, fecha_fin, meta, imagenes FROM `campañas` WHERE creador_id = ? ORDER BY id_campaña DESC");
+        if ($stmt) { $stmt->bind_param("i", $uid); $stmt->execute(); $res = $stmt->get_result(); if ($res) while ($r = $res->fetch_assoc()) $myCampanas[] = $r; $stmt->close(); }
+        $stmt = $conn->prepare("SELECT id_centro, nombre, estado, descripcion, imagenes FROM `centros_donacion` WHERE creador_id = ? ORDER BY id_centro DESC");
+        if ($stmt) { $stmt->bind_param("i", $uid); $stmt->execute(); $res = $stmt->get_result(); if ($res) while ($r = $res->fetch_assoc()) $myCentros[] = $r; $stmt->close(); }
     } elseif ($user_role === 'donante') {
         $stmt = $conn->prepare("SELECT id_campaña, titulo, estado, fecha_inicio, fecha_fin, meta, imagenes FROM `campañas` WHERE creador_id = ? ORDER BY id_campaña DESC");
         if ($stmt) { $stmt->bind_param("i", $uid); $stmt->execute(); $res = $stmt->get_result(); if ($res) while ($r = $res->fetch_assoc()) $myCampanas[] = $r; $stmt->close(); }
     } elseif ($user_role === 'beneficiario') {
         $stmt = $conn->prepare("SELECT id_centro, nombre, estado, descripcion, imagenes FROM `centros_donacion` WHERE creador_id = ? ORDER BY id_centro DESC");
         if ($stmt) { $stmt->bind_param("i", $uid); $stmt->execute(); $res = $stmt->get_result(); if ($res) while ($r = $res->fetch_assoc()) $myCentros[] = $r; $stmt->close(); }
+    }
+}
+
+// Asegurar que el usuario actual esté presente en la lista allUsers (si admin)
+if ($user_role === 'admin' && $conn) {
+    $found = false;
+    foreach ($allUsers as $u) { if (isset($u['id_usuario']) && intval($u['id_usuario']) === $uid) { $found = true; break; } }
+    if (!$found) {
+        $stmt = $conn->prepare("SELECT id_usuario, nombre, email, rol FROM usuarios WHERE id_usuario = ? LIMIT 1");
+        if ($stmt) { $stmt->bind_param("i",$uid); $stmt->execute(); $r = $stmt->get_result(); if ($r && $r->num_rows) $allUsers[] = $r->fetch_assoc(); $stmt->close(); }
     }
 }
 
@@ -202,6 +218,31 @@ if (!empty($_REQUEST['view'])) {
 	$req = trim($_REQUEST['view']);
 	$allowed = ['buttons','metrics','aprobaciones','historial','usuarios','ajustes'];
 	if (in_array($req, $allowed, true)) $currentView = $req;
+}
+
+// Endpoint: report_issue (graba en log JSON simple)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['action']) && $user_role) {
+    $action = $_POST['action'];
+    if ($action === 'report_issue') {
+        $subject = trim($_POST['subject'] ?? '');
+        $message = trim($_POST['message'] ?? '');
+        $resp = ['ok'=>false,'msg'=>''];
+        if ($message !== '') {
+            $logDir = __DIR__ . '/logs';
+            if (!is_dir($logDir)) @mkdir($logDir,0755,true);
+            $entry = ['time'=>date('c'),'user_id'=>$uid,'subject'=>$subject,'message'=>$message,'ip'=>$_SERVER['REMOTE_ADDR'] ?? ''];
+            $file = $logDir . '/panel_reports.log';
+            $ok = @file_put_contents($file, json_encode($entry, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND | LOCK_EX);
+            if ($ok !== false) { $resp['ok'] = true; $resp['msg'] = 'Reporte registrado. Gracias.'; }
+            else { $resp['msg'] = 'No se pudo guardar el reporte en el servidor.'; }
+        } else {
+            $resp['msg'] = 'El mensaje no puede estar vacío.';
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($resp);
+        $conn->close();
+        exit;
+    }
 }
 ?>
 <!doctype html>
@@ -314,22 +355,6 @@ if (!empty($_REQUEST['view'])) {
                   </div>
                 </div>
 
-                <div class="panel-card">
-                  <div style="font-weight:800">Accesos rápidos</div>
-                  <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
-                    <div>
-                      <div style="font-weight:700">Campañas pendientes</div>
-                      <div class="muted-small"><?php echo count($pendingCampanas); ?> por revisar</div>
-                      <div style="margin-top:8px"><form method="get" action="./panel.php"><input type="hidden" name="view" value="aprobaciones"><button class="btn-small" type="submit">Ir a Aprobaciones</button></form></div>
-                    </div>
-                    <div>
-                      <div style="font-weight:700">Centros pendientes</div>
-                      <div class="muted-small"><?php echo count($pendingCentros); ?> por revisar</div>
-                      <div style="margin-top:8px"><form method="get" action="./panel.php"><input type="hidden" name="view" value="aprobaciones"><button class="btn-small" type="submit">Ir a Aprobaciones</button></form></div>
-                    </div>
-                  </div>
-                </div>
-
               </div>
 
               <div id="metrics-detailed" class="panel-card" style="margin-top:12px;display:none">
@@ -383,11 +408,15 @@ if (!empty($_REQUEST['view'])) {
                                 $imgs = json_decode($pc['imagenes'], true);
                                 if (is_array($imgs) && count($imgs)) $thumb = $imgs[0];
                               }
+                              // Normalizar ruta si no es URL absoluta
+                              if ($thumb && !preg_match('#^(https?:)?//#i', $thumb) && substr($thumb,0,1) !== '/') {
+                                  $thumb = '../uploads/' . ltrim($thumb, '/');
+                              }
                             ?>
                             <?php if ($thumb): ?>
-                              <img src="<?php echo htmlspecialchars($thumb); ?>" alt="">
+                              <img src="<?php echo htmlspecialchars($thumb); ?>" alt="" onerror="this.onerror=null;this.src='../crear/img/placeholder.png'">
                             <?php else: ?>
-                              <div class="thumb-placeholder">—</div>
+                              <img src="../crear/img/placeholder.png" alt="">
                             <?php endif; ?>
                           </td>
                           <td><?php echo (int)$pc['id_campaña']; ?></td>
@@ -427,11 +456,15 @@ if (!empty($_REQUEST['view'])) {
                                 $imgsC = json_decode($pc['imagenes'], true);
                                 if (is_array($imgsC) && count($imgsC)) $thumbC = $imgsC[0];
                               }
+                              // Normalizar ruta si no es URL absoluta
+                              if ($thumbC && !preg_match('#^(https?:)?//#i', $thumbC) && substr($thumbC,0,1) !== '/') {
+                                  $thumbC = '../uploads/' . ltrim($thumbC, '/');
+                              }
                             ?>
                             <?php if ($thumbC): ?>
-                              <img src="<?php echo htmlspecialchars($thumbC); ?>" alt="">
+                              <img src="<?php echo htmlspecialchars($thumbC); ?>" alt="" onerror="this.onerror=null;this.src='../crear/img/placeholder.png'">
                             <?php else: ?>
-                              <div class="thumb-placeholder">—</div>
+                              <img src="../crear/img/placeholder.png" alt="">
                             <?php endif; ?>
                           </td>
                           <td><?php echo (int)$pc['id_centro']; ?></td>
@@ -461,7 +494,7 @@ if (!empty($_REQUEST['view'])) {
 
             <?php if ($user_role === 'admin'): ?>
               <div class="panel-card">
-                <div style="font-weight:800">Últimas campañas</div>
+                <div style="font-weight:800">Últimas campañas (todas)</div>
                 <div class="muted-small">Listado breve, acciones rápidas</div>
                 <div class="admin-table-wrapper" style="margin-top:10px">
                   <table class="admin-table">
@@ -483,6 +516,55 @@ if (!empty($_REQUEST['view'])) {
                   </table>
                 </div>
               </div>
+
+              <div class="panel-card" style="margin-top:12px">
+                <div style="font-weight:800">Tu historial de campañas (personales)</div>
+                <div class="muted-small">Campañas creadas por vos</div>
+                <div class="admin-table-wrapper" style="margin-top:10px">
+                  <table class="admin-table">
+                    <thead><tr><th>ID</th><th>Título</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                      <?php foreach($myCampanas as $c): ?>
+                        <tr data-row-type="campana" data-row-id="<?php echo (int)$c['id_campaña']; ?>">
+                          <td><?php echo (int)$c['id_campaña']; ?></td>
+                          <td><?php echo htmlspecialchars($c['titulo']); ?></td>
+                          <td class="status-col"><?php echo htmlspecialchars($c['estado']); ?></td>
+                          <td>
+                            <button class="btn-small view-btn" data-type="campana" data-id="<?php echo (int)$c['id_campaña']; ?>">Vista</button>
+                            <button class="btn-small edit-btn" data-type="campana" data-id="<?php echo (int)$c['id_campaña']; ?>">Editar</button>
+                            <button class="btn-small action-admin ghost" data-action="delete" data-type="campana" data-id="<?php echo (int)$c['id_campaña']; ?>">Eliminar</button>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="panel-card" style="margin-top:12px">
+                <div style="font-weight:800">Tu historial de centros (personales)</div>
+                <div class="muted-small">Centros creados por vos</div>
+                <div class="admin-table-wrapper" style="margin-top:10px">
+                  <table class="admin-table">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                      <?php foreach($myCentros as $c): ?>
+                        <tr data-row-type="centro" data-row-id="<?php echo (int)$c['id_centro']; ?>">
+                          <td><?php echo (int)$c['id_centro']; ?></td>
+                          <td><?php echo htmlspecialchars($c['nombre']); ?></td>
+                          <td class="status-col"><?php echo htmlspecialchars($c['estado']); ?></td>
+                          <td>
+                            <button class="btn-small view-btn" data-type="centro" data-id="<?php echo (int)$c['id_centro']; ?>">Vista</button>
+                            <button class="btn-small edit-btn" data-type="centro" data-id="<?php echo (int)$c['id_centro']; ?>">Editar</button>
+                            <button class="btn-small action-admin ghost" data-action="delete" data-type="centro" data-id="<?php echo (int)$c['id_centro']; ?>">Eliminar</button>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             <?php else: ?>
               <!-- Donante / Beneficiario: mostrar su historial (ya existentes) -->
               <!-- ...existing user-specific historial markup... -->
@@ -502,13 +584,14 @@ if (!empty($_REQUEST['view'])) {
                 <div style="font-weight:800">Usuarios registrados</div>
                 <div class="muted-small">Gestioná roles y visualizá información</div>
 
+                <!-- DONANTES -->
                 <h4 style="margin-top:12px">Donantes</h4>
                 <div class="admin-table-wrapper" style="margin-bottom:12px">
                   <table class="admin-table">
                     <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Acciones</th></tr></thead>
                     <tbody>
-                      <?php foreach($users_donante as $u): ?>
-                        <tr data-user-id="<?php echo (int)$u['id_usuario']; ?>">
+                      <?php foreach($users_donante as $u): $roleClass = 'role-donante'; ?>
+                        <tr class="<?php echo $roleClass; ?>" data-user-id="<?php echo (int)$u['id_usuario']; ?>">
                           <td><?php echo (int)$u['id_usuario']; ?></td>
                           <td><?php echo htmlspecialchars($u['nombre']); ?></td>
                           <td><?php echo htmlspecialchars($u['email']); ?></td>
@@ -529,7 +612,61 @@ if (!empty($_REQUEST['view'])) {
                   </table>
                 </div>
 
-                <!-- Centros y Admins tables ...existing markup... -->
+                <!-- BENEFICIARIOS -->
+                <h4 style="margin-top:8px">Beneficiarios / Centros</h4>
+                <div class="admin-table-wrapper" style="margin-bottom:12px">
+                  <table class="admin-table">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                      <?php foreach($users_beneficiario as $u): $roleClass = 'role-beneficiario'; ?>
+                        <tr class="<?php echo $roleClass; ?>" data-user-id="<?php echo (int)$u['id_usuario']; ?>">
+                          <td><?php echo (int)$u['id_usuario']; ?></td>
+                          <td><?php echo htmlspecialchars($u['nombre']); ?></td>
+                          <td><?php echo htmlspecialchars($u['email']); ?></td>
+                          <td>
+                            <select class="role-select" data-user="<?php echo (int)$u['id_usuario']; ?>">
+                              <option value="donante" <?php if($u['rol']=='donante') echo 'selected'; ?>>Donante</option>
+                              <option value="beneficiario" <?php if($u['rol']=='beneficiario') echo 'selected'; ?>>Beneficiario</option>
+                              <option value="admin" <?php if($u['rol']=='admin') echo 'selected'; ?>>Admin</option>
+                            </select>
+                          </td>
+                          <td>
+                            <button class="btn-small role-save" data-user="<?php echo (int)$u['id_usuario']; ?>">Guardar rol</button>
+                            <button class="btn-small view-user" data-user="<?php echo (int)$u['id_usuario']; ?>">Ver</button>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- ADMINS -->
+                <h4 style="margin-top:8px">Administradores</h4>
+                <div class="admin-table-wrapper" style="margin-bottom:12px">
+                  <table class="admin-table">
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                      <?php foreach($users_admin as $u): $roleClass = 'role-admin'; ?>
+                        <tr class="<?php echo $roleClass; ?>" data-user-id="<?php echo (int)$u['id_usuario']; ?>">
+                          <td><?php echo (int)$u['id_usuario']; ?></td>
+                          <td><?php echo htmlspecialchars($u['nombre']); ?></td>
+                          <td><?php echo htmlspecialchars($u['email']); ?></td>
+                          <td>
+                            <select class="role-select" data-user="<?php echo (int)$u['id_usuario']; ?>">
+                              <option value="donante" <?php if($u['rol']=='donante') echo 'selected'; ?>>Donante</option>
+                              <option value="beneficiario" <?php if($u['rol']=='beneficiario') echo 'selected'; ?>>Beneficiario</option>
+                              <option value="admin" <?php if($u['rol']=='admin') echo 'selected'; ?>>Admin</option>
+                            </select>
+                          </td>
+                          <td>
+                            <button class="btn-small role-save" data-user="<?php echo (int)$u['id_usuario']; ?>">Guardar rol</button>
+                            <button class="btn-small view-user" data-user="<?php echo (int)$u['id_usuario']; ?>">Ver</button>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
 
               </div>
             <?php endif; ?>
@@ -547,14 +684,13 @@ if (!empty($_REQUEST['view'])) {
                 <div class="muted-small">Configuraciones básicas de la aplicación</div>
                 <div style="margin-top:10px">
                   <div style="display:flex;flex-direction:column;gap:8px">
-                    <label>Modo mantenimiento</label>
-                    <div>
-                      <button class="btn-small" onclick="alert('Activar/Desactivar (pendiente de implementar)')">Cambiar</button>
-                    </div>
-
+                    <!-- Modo mantenimiento eliminado por petición -->
                     <label>Notificaciones globales</label>
-                    <div>
-                      <button class="btn-small" onclick="alert('Configurar notificaciones (pendiente)')">Configurar</button>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <label class="switch"><input type="checkbox" id="notif-email"><span class="slider"></span> Notificaciones por email</label>
+                      <label class="switch"><input type="checkbox" id="notif-web"><span class="slider"></span> Notificaciones web</label>
+                      <label class="switch"><input type="checkbox" id="notif-sms"><span class="slider"></span> Notificaciones SMS (simulado)</label>
+                      <div style="margin-top:8px"><button id="save-notif" class="btn-small">Guardar preferencias</button></div>
                     </div>
                   </div>
                 </div>
@@ -565,6 +701,18 @@ if (!empty($_REQUEST['view'])) {
                 <div class="muted-small">Modificar tus preferencias y datos</div>
                 <div style="margin-top:10px">
                   <a class="btn-small" href="../perfil/perfil.php">Editar perfil</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-card" style="margin-top:12px">
+              <div style="font-weight:800">Reportar un problema</div>
+              <div class="muted-small">Envia un reporte al equipo (registrado en el servidor)</div>
+              <div style="margin-top:8px">
+                <input type="text" id="report-subject" placeholder="Asunto (opcional)" style="width:100%;padding:8px;border:1px solid #e6eefc;border-radius:8px"><br>
+                <textarea id="report-message" placeholder="Describe el problema..." style="width:100%;margin-top:8px;padding:8px;border:1px solid #e6eefc;border-radius:8px;min-height:120px"></textarea>
+                <div class="report-actions" style="margin-top:8px;display:flex;justify-content:flex-start;gap:8px">
+                  <button id="send-report" class="btn-small">Enviar reporte</button>
                 </div>
               </div>
             </div>
@@ -643,7 +791,7 @@ if (!empty($_REQUEST['view'])) {
       <span class="nav-label">Crear</span>
     </a>
 
-    <a href="../foro/foro.html" class="nav-item" title="Foro">
+    <a href="../foros/foros.php" class="nav-item" title="Foro">
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v14l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
       <span class="nav-label">Foro</span>
     </a>

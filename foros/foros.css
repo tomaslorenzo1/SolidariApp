@@ -1,0 +1,176 @@
+/* ====== ESTILOS GENERALES ====== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  background: #f5f7fa;
+  color: #333;
+  min-height: 100vh;
+}
+
+/* ====== ENCABEZADO ====== */
+header {
+  background: #2d89ef;
+  color: white;
+  text-align: center;
+  padding: 2rem 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+/* ====== FORMULARIO DE PUBLICACIÓN ====== */
+.nuevo-post {
+  background: white;
+  width: 90%;
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.nuevo-post textarea {
+  width: 100%;
+  height: 120px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 0.8rem;
+  font-size: 1rem;
+  resize: vertical;
+  outline: none;
+  transition: border 0.2s ease;
+}
+
+.nuevo-post textarea:focus {
+  border-color: #2d89ef;
+}
+
+.nuevo-post button {
+  display: block;
+  margin-top: 1rem;
+  background: #2d89ef;
+  color: white;
+  font-weight: 600;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.1s ease;
+}
+
+.nuevo-post button:hover {
+  background: #1e63b7;
+  transform: scale(1.03);
+}
+
+/* ====== SECCIÓN FEED ====== */
+.feed {
+  width: 90%;
+  max-width: 700px;
+  margin: 1rem auto 3rem auto;
+}
+
+.feed h2 {
+  margin-bottom: 1rem;
+  color: #444;
+  border-left: 5px solid #2d89ef;
+  padding-left: 10px;
+  font-size: 1.4rem;
+}
+
+.post {
+  background: white;
+  border-radius: 12px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.post:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+}
+
+.post strong {
+  color: #2d89ef;
+  font-weight: 600;
+}
+
+.post p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+.post small {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 600px) {
+  header h1 {
+    font-size: 1.6rem;
+  }
+
+  .nuevo-post, .feed {
+    width: 95%;
+    padding: 1rem;
+  }
+
+  .nuevo-post textarea {
+    height: 100px;
+  }
+}
+
+/* tarjeta flotante */
+.card{position:absolute;left:20px;top:20px;z-index:400;background:var(--card);padding:14px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.12);min-width:260px}
+.card.hidden{display:none}
+.card h3{margin:0 0 6px}
+.card p{margin:0 8px 6px;font-size:14px;color:#555}
+.card button{margin-top:8px;padding:10px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}
+
+/* BOTTOM NAV */
+.bottom-nav{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:12px;
+  background:#fff;
+  border-radius:40px;
+  padding:8px 12px;
+  display:flex;
+  gap:12px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.12);
+  z-index:600;
+  height:var(--nav-h);
+  align-items:center;
+}
+
+/* nav items */
+.nav-item{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding:10px 14px;
+  border-radius:30px;
+  text-decoration:none;
+  color:#666;
+  font-weight:600;
+}
+.nav-item svg{width:20px;height:20px;display:block;fill:currentColor}
+.nav-item .nav-label{display:inline-block}
+.nav-item.active{background:#eef6ff;color:var(--blue)}

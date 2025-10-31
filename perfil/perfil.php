@@ -111,35 +111,34 @@ function role_label($r){
     <?php endif; ?>
 
     <div class="profile-top">
-      <form id="fotoForm" action="upload_foto.php" method="POST" enctype="multipart/form-data">
-        <input type="file" id="fotoInput" name="foto" accept="image/*" style="display:none">
-        <div class="avatar-wrap" id="avatarWrap">
-          <img id="avatarImg" src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar">
-          <div class="avatar-overlay">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25M21.41 6.34c.38-.38.38-1.02 0-1.41L19.07 2.59c-.39-.38-1.03-.38-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            <span>Cambiar foto de perfil</span>
+      <form id="fotoForm" action="upload_foto.php" method="POST" enctype="multipart/form-data" style="display:none">
+        <input type="file" id="fotoInput" name="foto" accept="image/*">
+      </form>
+
+      <div class="avatar-wrap" id="avatarWrap" style="cursor:pointer">
+        <img id="avatarImg" src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" style="width:96px;height:96px;border-radius:12px;object-fit:cover">
+        <div class="avatar-overlay" style="cursor:pointer"><span>Cambiar foto</span></div>
+      </div>
+
+      <form id="profileEditForm" action="perfil_save.php" method="POST" style="margin-left:18px; flex:1">
+        <div class="profile-info">
+          <label>Nombre</label>
+          <input type="text" name="nombre" value="<?php echo htmlspecialchars($user['nombre']); ?>" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eefc;margin-top:6px">
+          <label style="margin-top:8px">Email (no editable)</label>
+          <input type="email" readonly value="<?php echo htmlspecialchars($user['email']); ?>" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eefc;margin-top:6px;background:#f7fbff">
+          <label style="margin-top:8px">Teléfono</label>
+          <input type="text" name="telefono" value="<?php echo htmlspecialchars($user['telefono']); ?>" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eefc;margin-top:6px">
+          <label style="margin-top:8px">Dirección</label>
+          <input type="text" name="direccion" value="<?php echo htmlspecialchars($user['direccion']); ?>" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eefc;margin-top:6px">
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+            <button type="submit" class="btn-small">Guardar cambios</button>
+            <a href="../recuperar/recuperar.html" class="btn-link" style="margin-left:8px">Cambiar contraseña</a>
           </div>
         </div>
       </form>
-
-      <div class="profile-info">
-        <h2><?php echo htmlspecialchars($user['nombre']); ?></h2>
-        <div class="role"><?php echo role_label($user['rol']); ?></div>
-        <div class="info-list">
-          <div><strong>Email:</strong> <?php echo htmlspecialchars($user['email']); ?></div>
-          <div><strong>DNI:</strong> <?php echo htmlspecialchars($user['dni']); ?></div>
-          <div><strong>Teléfono:</strong> <?php echo htmlspecialchars($user['telefono']); ?></div>
-          <div><strong>Dirección:</strong> <?php echo htmlspecialchars($user['direccion']); ?></div>
-          <div><strong>Registrado el:</strong> <?php echo htmlspecialchars($user['fecha_registro']); ?></div>
-        </div>
-      </div>
     </div>
 
     <hr>
-
-    <div class="password-section">
-      <a href="../recuperar/recuperar.html" class="btn-link">Cambiar contraseña</a>
-    </div>
 
     <div style="margin-top:18px;">
       <a class="btn-logout" href="../login/logout.php">Cerrar sesión</a>
@@ -153,7 +152,7 @@ function role_label($r){
     <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3l9 8h-3v7h-4v-5H10v5H6v-7H3z"/></svg>
     <span class="nav-label">Inicio</span>
   </a>
-  <a href="../panel/panel.html" class="nav-item" title="Panel">
+  <a href="../panel/panel.php" class="nav-item" title="Panel">
     <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z"/></svg>
     <span class="nav-label">Panel</span>
   </a>
@@ -161,7 +160,7 @@ function role_label($r){
     <svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2z"/></svg>
     <span class="nav-label">Crear</span>
   </a>
-  <a href="../foro/foro.html" class="nav-item" title="Foro">
+  <a href="../foros/foros.php" class="nav-item" title="Foro">
     <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v14l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
     <span class="nav-label">Foro</span>
   </a>

@@ -1,11 +1,10 @@
-// Panel JS: maneja subtabs, confirmaciones, edición inline, cambio de rol y estadísticas.
-// Notas: la navegación principal la controla PHP (param view). Este archivo no fuerza tabs principales.
+/* Reemplazo completo de panel.js: unifica handlers, evita duplicados y añade comprobaciones */
 document.addEventListener('DOMContentLoaded', () => {
-  // Elementos opcionales — pueden no existir en la nueva plantilla
-  const subTabs = document.querySelectorAll('.subtab');
+  // Elementos principales (pueden no existir en todas las pantallas)
   const modalConfirm = document.getElementById('modal-confirm');
   const modalConfirmBtn = document.getElementById('modal-confirm-btn');
   const modalCancel = document.getElementById('modal-cancel');
+
   const modalEdit = document.getElementById('modal-edit');
   const modalEditForm = document.getElementById('modal-edit-form');
   const modalEditFields = document.getElementById('edit-fields');
@@ -14,7 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalEditSave = document.getElementById('modal-edit-save');
   const modalEditCancel = document.getElementById('modal-edit-cancel');
 
-  // Subtabs (Aprobaciones) - sólo si existen
+  const modalUser = document.getElementById('modal-user');
+  const modalUserBody = document.getElementById('modal-user-body');
+  const modalUserTitle = document.getElementById('modal-user-title');
+  const modalUserClose = document.getElementById('modal-user-close');
+
+  // Subtabs (Aprobaciones)
+  const subTabs = document.querySelectorAll('.subtab');
   if (subTabs && subTabs.length) {
     subTabs.forEach(st => st.addEventListener('click', () => {
       subTabs.forEach(x => x.classList.toggle('active', x === st));
@@ -26,7 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   }
 
-  // UTIL: obtener item desde window.PANEL_DATA
+  // UTIL: escape
+  function escapeHtml(text=''){ return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+  // UTIL: obtener item desde window.PANEL_DATA (si existe)
   function findItem(type, id){
     const data = window.PANEL_DATA || {};
     const idn = parseInt(id,10);
@@ -36,11 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     return (listMap[type] || []).find(x => {
       const key = type === 'campana' ? (x.id_campaña ?? x.id) : (x.id_centro ?? x.id);
-      return parseInt(key,10) === idn;
+      return parseInt(key || 0,10) === idn;
     });
   }
 
-  // ABRIR modal de edición: reutiliza el modal-edit ya presente en la página
+  // Abrir modal edición (reutilizable para "ver" también)
   function openEditModal(type, id){
     if (!modalEdit || !modalEditFields || !modalEditTitle) { alert('Modal de edición no disponible'); return; }
     const item = findItem(type, id);
@@ -71,15 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     modalEdit.classList.remove('hidden'); modalEdit.setAttribute('aria-hidden','false');
-    // foco lógico en el primer input
     setTimeout(() => { const f = modalEdit.querySelector('input,textarea,select'); if (f) f.focus(); }, 80);
   }
 
-  // cerrar modal-edit si botones existen
+  // Cerrar modal editar
   if (modalEditClose) modalEditClose.addEventListener('click', () => { modalEdit.classList.add('hidden'); modalEdit.setAttribute('aria-hidden','true'); });
   if (modalEditCancel) modalEditCancel.addEventListener('click', () => { modalEdit.classList.add('hidden'); modalEdit.setAttribute('aria-hidden','true'); });
 
-  // Envío del formulario de edición (AJAX save)
+  // Envío edición (AJAX)
   if (modalEditForm) {
     modalEditForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -92,19 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(json => {
           if (json && json.ok) {
             const type = fd.get('type'); const id = fd.get('id');
-            try {
-              const item = findItem(type, id);
-              if (item) {
-                if (type === 'campana') {
-                  item.titulo = fd.get('titulo') || item.titulo;
-                  item.descripcion = fd.get('descripcion') || item.descripcion;
-                } else {
-                  item.nombre = fd.get('nombre') || item.nombre;
-                  item.descripcion = fd.get('descripcion') || item.descripcion;
-                }
-              }
-            } catch(e){ console.warn(e); }
-            const row = document.querySelector(`tr[data-row-type="${fd.get('type')}"][data-row-id="${fd.get('id')}"]`);
+            const row = document.querySelector(`tr[data-row-type="${type}"][data-row-id="${id}"]`);
             if (row) {
               const titleCell = row.querySelector('.td-title');
               if (titleCell) titleCell.textContent = (fd.get('titulo') || fd.get('nombre') || titleCell.textContent);
@@ -122,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Acciones confirm (approve/reject/delete) - handler global
+  // Confirm modal: botón confirmar
   if (modalConfirmBtn) {
     modalConfirmBtn.addEventListener('click', () => {
       const action = modalConfirm.dataset.action;
@@ -142,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (json && json.ok) {
             const row = document.querySelector(`tr[data-row-type="${type}"][data-row-id="${id}"]`);
             if (row) row.remove();
+            // actualizar DATA in-memory si existe
             try {
               const pd = window.PANEL_DATA || {};
               ['pendingCampanas','allCampanas','myCampanas'].forEach(k => { if (pd[k]) pd[k] = pd[k].filter(x => parseInt((x.id_campaña ?? x.id),10) !== parseInt(id,10)); });
@@ -163,9 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (modalCancel) modalCancel.addEventListener('click', () => { if (modalConfirm) { modalConfirm.classList.add('hidden'); modalConfirm.setAttribute('aria-hidden','true'); } });
 
-  // Delegación para acciones en tablas: approve/reject/delete, editar y ver
+  // Delegación: clics en tabla (acciones, editar, ver)
   document.addEventListener('click', (e) => {
-    // approve/reject/delete
+    // acciones admin (approve/reject/delete)
     const act = e.target.closest && e.target.closest('.action-admin');
     if (act) {
       e.preventDefault();
@@ -173,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const type = act.dataset.type;
       const id = act.dataset.id;
       if (!action || !type || !id) return alert('Acción inválida');
-      // abrir modalConfirm
       if (modalConfirm) {
         const modalMsg = document.getElementById('modal-msg');
         const modalSub = document.getElementById('modal-sub');
@@ -185,16 +180,18 @@ document.addEventListener('DOMContentLoaded', () => {
         modalConfirm.classList.remove('hidden');
         modalConfirm.setAttribute('aria-hidden','false');
       } else {
+        // fallback simple
         if (!confirm('Confirmar acción: ' + action)) return;
         const form = new FormData();
         form.append('action', action); form.append('type', type); form.append('id', id); form.append('from','panel_js');
-        fetch('./panel.php', { method:'POST', body: form }).then(r=>r.json()).then(json => {
-          if (json && json.ok) {
-            const row = document.querySelector(`tr[data-row-type="${type}"][data-row-id="${id}"]`);
-            if (row) row.remove();
-            alert(json.msg||'Ok');
-          } else alert((json && json.msg) ? json.msg : 'Error');
-        }).catch(()=>alert('Error comunicación'));
+        fetch('./panel.php', { method:'POST', body: form })
+          .then(r=>r.json()).then(json => {
+            if (json && json.ok) {
+              const row = document.querySelector(`tr[data-row-type="${type}"][data-row-id="${id}"]`);
+              if (row) row.remove();
+              alert(json.msg||'Ok');
+            } else alert((json && json.msg) ? json.msg : 'Error');
+          }).catch(()=>alert('Error comunicación'));
       }
       return;
     }
@@ -208,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Ver (abrir modal de edición en modo lectura) => para simplicidad abrimos el mismo modal
+    // Ver (usa el mismo modal-edit en modo lectura)
     const vb = e.target.closest && e.target.closest('.view-btn');
     if (vb) {
       const type = vb.dataset.type;
@@ -218,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ROLE change (delegado)
+  // Cambio de rol: botón "Guardar rol" (delegado)
   document.addEventListener('click', (e) => {
     const rb = e.target.closest && e.target.closest('.role-save');
     if (!rb) return;
@@ -249,12 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
       .finally(() => { rb.disabled = false; rb.textContent = 'Guardar rol'; });
   });
 
-  // Modal usuario (detalle) - si existe modal-user en DOM
-  const modalUser = document.getElementById('modal-user');
-  const modalUserBody = document.getElementById('modal-user-body');
-  const modalUserTitle = document.getElementById('modal-user-title');
-  const modalUserClose = document.getElementById('modal-user-close');
-  if (modalUserClose) modalUserClose.addEventListener('click', () => { modalUser.classList.add('hidden'); modalUser.setAttribute('aria-hidden','true'); });
+  // Modal usuario (detalle)
+  if (modalUserClose) modalUserClose.addEventListener('click', () => { if (modalUser) { modalUser.classList.add('hidden'); modalUser.setAttribute('aria-hidden','true'); } });
 
   document.addEventListener('click', (e) => {
     const v = e.target.closest && e.target.closest('.view-user');
@@ -273,34 +266,105 @@ document.addEventListener('DOMContentLoaded', () => {
     modalUser.classList.remove('hidden'); modalUser.setAttribute('aria-hidden','false');
   });
 
-  /* Estadísticas: mini render si existen stats en PANEL_DATA */
-  function renderStats(){
-    const pd = window.PANEL_DATA || {};
-    if (!pd.stats) return;
-    const chart = document.getElementById('chart-metrics');
-    if (!chart) return;
+  // Métricas: render mini y detalladas
+  function renderMiniDoughnuts(){
+    if (typeof Chart === 'undefined') return;
     try {
-      if (typeof Chart !== 'undefined') {
-        // destruir instancia previa si existe para evitar duplicados (si se re-renderiza)
-        if (chart._chartInstance) {
-          try { chart._chartInstance.destroy(); } catch(e){}
-          chart._chartInstance = null;
-        }
-        const ci = new Chart(chart, {
-          type: 'bar',
-          data: {
-            labels: ['Visitas','Donaciones transferencia','Donaciones presencial'],
-            datasets: [{ label: 'Total', backgroundColor: ['#2b6cb0','#3b82f6','#06b6d4'], data: [pd.stats.global_metrics.visitas||0, pd.stats.global_metrics.donaciones_transferencia||0, pd.stats.global_metrics.donaciones_presencial||0] }]
-          },
-          options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+      const pd = window.PANEL_DATA || {};
+      const g = (pd.stats && pd.stats.global_metrics) ? pd.stats.global_metrics : {visitas:0, donaciones_transferencia:0, donaciones_presencial:0};
+      const cfg = (id, value, color, bg) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el._chartInstance) try{ el._chartInstance.destroy(); }catch(e){}
+        // Forzar tamaño visible (css controlará el tamaño real)
+        el.style.width = '120px';
+        el.style.height = '100px';
+        el._chartInstance = new Chart(el, {
+          type:'doughnut',
+          data:{ labels:['a','b'], datasets:[{data:[value, Math.max(1,value)], backgroundColor:[color,bg]}] },
+          options:{ plugins:{legend:{display:false}}, cutout: '70%', maintainAspectRatio: false, responsive: true }
         });
-        chart._chartInstance = ci;
-      }
-    } catch (err) { console.error('Chart render error', err); }
+      };
+      cfg('doughnut-visitas', g.visitas||0, '#2b6cb0', '#e9f2fb');
+      cfg('doughnut-transf', g.donaciones_transferencia||0, '#3b82f6', '#eaf5ff');
+      cfg('doughnut-pres', g.donaciones_presencial||0, '#06b6d4', '#e8fbfd');
+    } catch(e){ console.warn('mini charts', e); }
   }
-  renderStats();
 
-  // --- Navegación local: mosaico -> secciones (sin salir de panel.php) ---
+  function renderDetailedCharts(){
+    if (typeof Chart === 'undefined') return;
+    try {
+      const visits = [10,20,35,30,45,50,60,55,70,80];
+      const labels = visits.map((v,i)=> 'M' + (i+1));
+      const ctxL = document.getElementById('chart-line-visits');
+      const ctxB = document.getElementById('chart-bar-donations');
+      if (ctxL) { if (ctxL._chartInstance) try{ ctxL._chartInstance.destroy(); }catch(e){}; ctxL._chartInstance = new Chart(ctxL, { type:'line', data:{ labels, datasets:[{ label:'Visitas', data:visits, borderColor:'#2b6cb0', backgroundColor:'rgba(43,108,176,0.08)', fill:true }] }, options:{responsive:true, maintainAspectRatio:false} }); }
+      if (ctxB) { if (ctxB._chartInstance) try{ ctxB._chartInstance.destroy(); }catch(e){}; const pd = window.PANEL_DATA||{}; ctxB._chartInstance = new Chart(ctxB, { type:'bar', data:{ labels:['Transfer','Presencial'], datasets:[{ label:'Donaciones', data:[pd.stats?.global_metrics?.donaciones_transferencia||0, pd.stats?.global_metrics?.donaciones_presencial||0], backgroundColor:['#3b82f6','#06b6d4'] }] }, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } }); }
+    } catch(e){ console.warn('detailed charts', e); }
+  }
+
+  // --- Notificaciones: cargar/guardar en localStorage (ficticio)
+  function loadNotifPrefs(){
+    try {
+      const prefs = JSON.parse(localStorage.getItem('panel_notif_prefs') || '{}');
+      document.getElementById('notif-email').checked = !!prefs.email;
+      document.getElementById('notif-web').checked = !!prefs.web;
+      document.getElementById('notif-sms').checked = !!prefs.sms;
+    } catch(e){}
+  }
+  function saveNotifPrefs(){
+    try {
+      const prefs = { email: !!document.getElementById('notif-email').checked, web: !!document.getElementById('notif-web').checked, sms: !!document.getElementById('notif-sms').checked };
+      localStorage.setItem('panel_notif_prefs', JSON.stringify(prefs));
+      alert('Preferencias guardadas (simulado).');
+    } catch(e){ alert('No se pudo guardar preferencias.'); }
+  }
+  const btnSaveNotif = document.getElementById('save-notif');
+  if (btnSaveNotif) { btnSaveNotif.addEventListener('click', saveNotifPrefs); loadNotifPrefs(); }
+
+  // --- Reporte de problema (AJAX) ---
+  const sendReportBtn = document.getElementById('send-report');
+  if (sendReportBtn) {
+    sendReportBtn.addEventListener('click', () => {
+      const subject = document.getElementById('report-subject').value || '';
+      const message = document.getElementById('report-message').value || '';
+      if (!message.trim()) { alert('Escribe una descripción del problema.'); return; }
+      sendReportBtn.disabled = true; sendReportBtn.textContent = 'Enviando...';
+      const fd = new FormData();
+      fd.append('action','report_issue');
+      fd.append('subject', subject);
+      fd.append('message', message);
+      fd.append('from','panel_js');
+      fetch('./panel.php', { method:'POST', body: fd })
+        .then(r => r.json())
+        .then(json => {
+          if (json && json.ok) {
+            alert(json.msg || 'Reporte enviado.');
+            document.getElementById('report-subject').value = '';
+            document.getElementById('report-message').value = '';
+          } else {
+            alert((json && json.msg) ? json.msg : 'Error al enviar reporte.');
+          }
+        }).catch(err => {
+          console.error(err); alert('Error de comunicación.');
+        }).finally(() => {
+          sendReportBtn.disabled = false; sendReportBtn.textContent = 'Enviar reporte';
+        });
+    });
+  }
+
+  // Botón metrics toggler
+  const btnMetrics = document.getElementById('btn-metrics-open');
+  const metricsDetailed = document.getElementById('metrics-detailed');
+  if (btnMetrics && metricsDetailed) {
+    btnMetrics.addEventListener('click', () => {
+      const isHidden = metricsDetailed.style.display === 'none' || metricsDetailed.style.display === '';
+      metricsDetailed.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) renderDetailedCharts();
+    });
+  }
+
+  // Navegación local (mosaico -> secciones) sin recarga
   const sectionMap = {
     overview: 'sec-overview',
     aprobaciones: 'sec-aprobaciones',
@@ -318,41 +382,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
-    // focus first interactive element in buttons
     const firstBtn = document.querySelector('#sec-buttons .btn-small');
     if (firstBtn) firstBtn.focus();
   }
 
   function showSection(view, pushState = true) {
     const targetId = sectionMap[view] || sectionMap['buttons'];
-    // hide buttons
     const buttons = document.getElementById('sec-buttons');
     if (buttons) buttons.style.display = 'none';
-    // hide all sections then show target
     Object.values(sectionMap).forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = (id === targetId) ? 'block' : 'none';
     });
-    // update URL/history
     if (pushState) {
       try { history.pushState({view: view}, '', '?view=' + view); } catch(e){}
     }
-    // scroll to top of panel
     const main = document.querySelector('.panel-main');
     if (main) main.scrollIntoView({behavior:'smooth'});
-    // render charts if necessary
-    if (view === 'overview') {
-      try { renderStats(); renderMiniDoughnuts && renderMiniDoughnuts(); renderDetailedCharts && renderDetailedCharts(); } catch(e){}
-    }
+    if (view === 'overview') { renderMiniDoughnuts(); /* y renderDetailedCharts si está abierto */ }
   }
 
-  // Hacer las tarjetas del mosaico clicables
+  // Hacer tarjetas del mosaico clicables (sin interceptar botones internos)
   document.querySelectorAll('#sec-buttons .panel-card').forEach(card => {
-    // añadir rol y tabindex para accesibilidad
-    card.setAttribute('role','button');
-    card.tabIndex = 0;
+    card.setAttribute('role','button'); card.tabIndex = 0;
     card.addEventListener('click', (ev) => {
-      // si el clic vino desde un botón/enlace/input interno, no interceptamos
       if (ev.target.closest('button') || ev.target.closest('a') || ev.target.closest('input') || ev.target.closest('select')) return;
       const form = card.querySelector('form');
       if (!form) return;
@@ -360,13 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const view = fd.get('view') || form.querySelector('input[name="view"]')?.value;
       if (view) showSection(view, true);
     });
-    // keyboard: Enter / Space
     card.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
     });
   });
 
-  // interceptar envío de forms dentro del mosaico de botones (fallback si hacen click en el botón)
+  // Interceptar submit de forms en mosaico (fallback)
   document.querySelectorAll('#sec-buttons form').forEach(f => {
     f.addEventListener('submit', (ev) => {
       ev.preventDefault();
@@ -377,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // botón volver (delegado)
+  // Botón volver (delegado)
   document.addEventListener('click', (e) => {
     const back = e.target.closest && e.target.closest('.btn-back');
     if (!back) return;
@@ -386,170 +438,19 @@ document.addEventListener('DOMContentLoaded', () => {
     try { history.pushState({view:'buttons'}, '', '?view=buttons'); } catch(e){}
   });
 
-  // manejar popstate (back/forward del navegador)
+  // Manejar popstate (back/forward)
   window.addEventListener('popstate', (ev) => {
     const v = (ev.state && ev.state.view) || (new URLSearchParams(location.search).get('view')) || 'buttons';
     if (v === 'buttons') showOnlyButtons(); else showSection(v, false);
   });
 
-  // inicial: si PHP indicó una vista distinta de buttons, mostrarla sin pushState extra
+  // Inicial: mostrar la vista que PHP definió sin duplicar history
   try {
     const init = (window.INIT_VIEW || '').toString() || (new URLSearchParams(location.search).get('view') || 'buttons');
-    if (init && init !== 'buttons') {
-      showSection(init, false);
-    } else {
-      showOnlyButtons();
-    }
+    if (init && init !== 'buttons') showSection(init, false);
+    else showOnlyButtons();
   } catch(e) { showOnlyButtons(); }
 
-  // util escape
-  function escapeHtml(text=''){ return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
-
-  // --- funciones de metrics/doughnuts (si existen en DOM) ---
-  // Se definen sólo si Canvas está presente (evita errores)
-  function renderMiniDoughnuts(){
-    if (typeof Chart === 'undefined') return;
-    try {
-      const pd = window.PANEL_DATA || {};
-      const g = (pd.stats && pd.stats.global_metrics) ? pd.stats.global_metrics : {visitas:0, donaciones_transferencia:0, donaciones_presencial:0};
-      const cfg = (id, value, color, bg) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (el._chartInstance) try{ el._chartInstance.destroy(); }catch(e){}
-        el._chartInstance = new Chart(el, { type:'doughnut', data:{ labels:['a','b'], datasets:[{data:[value, Math.max(1,value)], backgroundColor:[color,bg]}] }, options:{plugins:{legend:{display:false}}, cutout:'70%'} });
-      };
-      cfg('doughnut-visitas', g.visitas||0, '#2b6cb0', '#e9f2fb');
-      cfg('doughnut-transf', g.donaciones_transferencia||0, '#3b82f6', '#eaf5ff');
-      cfg('doughnut-pres', g.donaciones_presencial||0, '#06b6d4', '#e8fbfd');
-    } catch(e){ console.warn('mini charts', e); }
-  }
-  function renderDetailedCharts(){
-    if (typeof Chart === 'undefined') return;
-    try {
-      const visits = [10,20,35,30,45,50,60,55,70,80];
-      const labels = visits.map((v,i)=> 'M' + (i+1));
-      const ctxL = document.getElementById('chart-line-visits');
-      const ctxB = document.getElementById('chart-bar-donations');
-      if (ctxL) { if (ctxL._chartInstance) try{ ctxL._chartInstance.destroy(); }catch(e){}; ctxL._chartInstance = new Chart(ctxL, { type:'line', data:{ labels, datasets:[{ label:'Visitas', data:visits, borderColor:'#2b6cb0', backgroundColor:'rgba(43,108,176,0.08)', fill:true }] }, options:{responsive:true, maintainAspectRatio:false} }); }
-      if (ctxB) { if (ctxB._chartInstance) try{ ctxB._chartInstance.destroy(); }catch(e){}; const pd = window.PANEL_DATA||{}; ctxB._chartInstance = new Chart(ctxB, { type:'bar', data:{ labels:['Transfer','Presencial'], datasets:[{ label:'Donaciones', data:[pd.stats.global_metrics.donaciones_transferencia||0, pd.stats.global_metrics.donaciones_presencial||0], backgroundColor:['#3b82f6','#06b6d4'] }] }, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } }); }
-    } catch(e){ console.warn('detailed charts', e); }
-  }
-
-  // render inicial de mini doughnuts (si están)
-  try { renderMiniDoughnuts(); } catch(e){}
-});
-  document.addEventListener('click', (e) => {
-    const rb = e.target.closest && e.target.closest('.role-save');
-    if (!rb) return;
-    const userId = rb.dataset.user;
-    const sel = document.querySelector(`select.role-select[data-user="${userId}"]`);
-    if (!sel) { alert('Selector no encontrado'); return; }
-    const newRole = sel.value;
-    if (!confirm(`Cambiar rol del usuario #${userId} a "${newRole}"?`)) return;
-    const fd = new FormData();
-    fd.append('action','change_role');
-    fd.append('user_id', String(userId));
-    fd.append('new_role', newRole);
-    fd.append('from','panel_js');
-    rb.disabled = true;
-    rb.textContent = 'Guardando...';
-    fetch('./panel.php', { method: 'POST', body: fd })
-      .then(r => r.json())
-      .then(json => {
-        if (json && json.ok) {
-          alert(json.msg || 'Rol actualizado');
-          // actualizar window.PANEL_DATA.allUsers in-memory (simple linear scan)
-          try {
-            const pd = window.PANEL_DATA || {};
-            if (pd.allUsers && Array.isArray(pd.allUsers)) {
-              pd.allUsers = pd.allUsers.map(u => {
-                if (String(u.id_usuario) === String(userId)) u.rol = newRole;
-                return u;
-              });
-              // re-build local splits (optional)
-              window.PANEL_DATA = pd;
-            }
-          } catch(e){ console.warn(e); }
-        } else {
-          alert((json && json.msg) ? json.msg : 'Error al actualizar rol');
-        }
-      }).catch(err => {
-        console.error(err); alert('Error de comunicación');
-      }).finally(() => {
-        rb.disabled = false;
-        rb.textContent = 'Guardar rol';
-      });
-  });
-
-  // 3) abrir modal usuario (vista detallada)
-  const modalUser = document.getElementById('modal-user');
-  const modalUserBody = document.getElementById('modal-user-body');
-  const modalUserTitle = document.getElementById('modal-user-title');
-  const modalUserClose = document.getElementById('modal-user-close');
-  document.addEventListener('click', (e) => {
-    const v = e.target.closest && e.target.closest('.view-user');
-    if (!v) return;
-    const uid = v.dataset.user;
-    const user = (window.PANEL_DATA && Array.isArray(window.PANEL_DATA.allUsers)) ? window.PANEL_DATA.allUsers.find(x => String(x.id_usuario) === String(uid)) : null;
-    if (!user) { alert('Usuario no encontrado'); return; }
-    modalUserTitle.textContent = `Usuario #${user.id_usuario}`;
-    modalUserBody.innerHTML = `
-      <div style="font-weight:800">${escapeHtml(user.nombre)}</div>
-      <div class="muted-small">${escapeHtml(user.email)}</div>
-      <div style="margin-top:8px"><strong>Rol:</strong> ${escapeHtml(user.rol)}</div>
-      <div style="margin-top:12px" class="muted-small">Información completa (puedes agregar más campos según BD)</div>
-    `;
-    modalUser.classList.remove('hidden'); modalUser.setAttribute('aria-hidden','false');
-  });
-  if (modalUserClose) modalUserClose.addEventListener('click', () => { modalUser.classList.add('hidden'); modalUser.setAttribute('aria-hidden','true'); });
-
-  // 4) Métricas: mostrar/ocultar y renderizar gráficos (doughnuts/line/bar)
-  const btnMetrics = document.getElementById('btn-metrics-open');
-  const metricsDetailed = document.getElementById('metrics-detailed');
-  function renderMiniDoughnuts(){
-    const pd = window.PANEL_DATA || {};
-    const g = (pd.stats && pd.stats.global_metrics) ? pd.stats.global_metrics : {visitas:0, donaciones_transferencia:0, donaciones_presencial:0};
-    // doughnut visitas
-    try {
-      if (typeof Chart !== 'undefined') {
-        const ctx1 = document.getElementById('doughnut-visitas');
-        const ctx2 = document.getElementById('doughnut-transf');
-        const ctx3 = document.getElementById('doughnut-pres');
-        if (ctx1) new Chart(ctx1, { type:'doughnut', data:{ labels:['visitas','resto'], datasets:[{data:[g.visitas || 0, Math.max(1, (g.visitas||0))], backgroundColor:['#2b6cb0','#e9f2fb'] }] }, options:{plugins:{legend:{display:false}}, cutout:'70%'} });
-        if (ctx2) new Chart(ctx2, { type:'doughnut', data:{ labels:['transf','resto'], datasets:[{data:[g.donaciones_transferencia || 0, Math.max(1, (g.donaciones_transferencia||0))], backgroundColor:['#3b82f6','#eaf5ff'] }] }, options:{plugins:{legend:{display:false}}, cutout:'70%'} });
-        if (ctx3) new Chart(ctx3, { type:'doughnut', data:{ labels:['pres','resto'], datasets:[{data:[g.donaciones_presencial || 0, Math.max(1, (g.donaciones_presencial||0))], backgroundColor:['#06b6d4','#e8fbfd'] }] }, options:{plugins:{legend:{display:false}}, cutout:'70%'} });
-      }
-    } catch(e){ console.warn('mini charts', e); }
-  }
-  function renderDetailedCharts(){
-    const pd = window.PANEL_DATA || {};
-    // placeholders: generar datos simples para que el admin vea algo
-    const visits = [10,20,35,30,45,50,60,55,70,80]; // ejemplo
-    const labels = visits.map((v,i)=> 'M' + (i+1));
-    try {
-      if (typeof Chart !== 'undefined') {
-        const ctxL = document.getElementById('chart-line-visits');
-        const ctxB = document.getElementById('chart-bar-donations');
-        if (ctxL) new Chart(ctxL, { type:'line', data:{ labels, datasets:[{ label:'Visitas', data:visits, borderColor:'#2b6cb0', backgroundColor:'rgba(43,108,176,0.08)', fill:true }] }, options:{responsive:true, maintainAspectRatio:false} });
-        if (ctxB) new Chart(ctxB, { type:'bar', data:{ labels:['Transfer','Presencial'], datasets:[{ label:'Donaciones', data:[pd.stats.global_metrics.donaciones_transferencia||0, pd.stats.global_metrics.donaciones_presencial||0], backgroundColor:['#3b82f6','#06b6d4'] }] }, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
-      }
-    } catch(e){ console.warn('detailed charts', e); }
-  }
-
-  if (btnMetrics) {
-    btnMetrics.addEventListener('click', () => {
-      if (!metricsDetailed) return;
-      const isHidden = metricsDetailed.style.display === 'none' || metricsDetailed.style.display === '';
-      metricsDetailed.style.display = isHidden ? 'block' : 'none';
-      if (isHidden) {
-        // render charts
-        renderDetailedCharts();
-      }
-    });
-  }
-  // Initial mini render
+  // Render inicial de mini doughnuts
   renderMiniDoughnuts();
-
-  // util escape
-  function escapeHtml(text=''){ return String(text).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
 });

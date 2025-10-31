@@ -1,14 +1,21 @@
-cas/* Reset y básicos */
+/* Reset y básicos */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+html, body {
+  background-color: #f9f9f9; /* evita franjas blancas en los bordes del viewport */
+  overflow-x: hidden; /* evita que aparezcan pequeños "slivers" por desbordes */
 }
 body {
   font-family: 'Poppins', sans-serif;
   color: #333;
   line-height: 1.6;
   background-color: #f9f9f9;
+}
+:root {
+  --header-offset: 100px; /* si ajustas el header, actualiza este valor */
 }
 a {
   text-decoration: none;
@@ -20,7 +27,7 @@ a {
 .main-content {
   animation: fadeInDownContent 1.5s ease-out 0.5s forwards; 
   opacity: 0; /* Oculto inicialmente */
-  padding-top: 100px; /* evita que el header fijo tape las secciones al navegar por anclas */
+  padding-top: var(--header-offset); /* evita que el header fijo tape las secciones al navegar por anclas */
 }
 
 /* Botones comunes */
@@ -43,21 +50,25 @@ a {
 header {
   position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   width: 100%;
   background-color: #3498DB;
   color: white;
   padding: 15px 0;
   z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  /* Animación para el header al cargar */
+  /* quitar sombra fuerte y evitar línea blanca visible */
+  box-shadow: none;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
   animation: slideInDown 0.8s ease-out; 
 }
 .nav-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 90%;
+  width: 100%;
   max-width: 1200px;
+  padding: 0 24px; /* importante: evita que el contenido quede pegado al borde */
   margin: auto;
 }
 .logo {
@@ -82,38 +93,72 @@ nav .btn {
   margin-left: 15px;
 }
 
-/* Hero */
+/* Hero (ahora con <img class="hero-bg"> en el HTML) */
 .hero {
-  height: 100vh;
-  /* Ruta con comillas para evitar problemas por espacios/escapes */
-  background: url("./img/WhatsApp Image 2025-10-05 at 20.29.48.jpg") center/cover no-repeat;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   text-align: center;
-  /* color fallback si la imagen no carga */
-  background-color: #2b8ac6;
+  /* Antes: min-height: calc(100vh - var(--header-offset)); */
+  /* Cambio: hacemos que la hero llegue al top del viewport negando el padding de .main-content.
+     De esta forma la imagen queda detrás del header fijo y desaparece la franja blanca. */
+  margin-top: calc(-1 * var(--header-offset));
+  padding-top: var(--header-offset); /* mantiene contenido visible bajo el header */
+  min-height: 100vh; /* ocupa toda la altura del viewport */
+  overflow: hidden; /* evita franjas al redimensionar */
+  background-color: #2b8ac6; /* fallback mientras carga la img */
 }
+
+/* imagen de fondo como elemento para mejor control del recorte */
+.hero-bg {
+  display: block; /* evita blancos/espacios por comportamiento inline */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;         /* ocupa todo manteniendo proporción */
+  object-position: center center; /* centra la zona importante */
+  z-index: 0;
+  will-change: transform;
+  filter: saturate(0.98) contrast(1.02); /* ligeros ajustes para apariencia pro */
+}
+
+/* overlay (oscurece la imagen para legibilidad) */
 .hero-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0,0,0,0.4);
+  background: linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.28));
+  z-index: 1;
 }
+
+/* contenido encima de la imagen */
 .hero-content {
   position: relative;
-  z-index: 1;
-  max-width: 800px;
+  z-index: 2;
+  max-width: 900px;
+  padding: 28px;
+  text-shadow: 0 6px 22px rgba(0,0,0,0.35);
 }
 .hero-content h1 {
-  font-size: 3rem;
-  margin-bottom: 20px;
+  font-size: clamp(2rem, 4.2vw, 3.4rem);
+  margin-bottom: 18px;
   color: #fff;
+  line-height: 1.05;
+  font-weight: 700;
 }
 .hero-content p {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
+  font-size: clamp(1rem, 1.8vw, 1.25rem);
+  margin-bottom: 22px;
+  color: rgba(255,255,255,0.95);
+}
+
+/* pequeño ajuste para que el contenido no quede bajo el header en pantallas muy pequeñas */
+@media (max-width: 480px) {
+  :root { --header-offset: 80px; }
+  .hero-content { padding: 18px; }
 }
 
 /* Cómo funciona */
@@ -164,7 +209,7 @@ nav .btn {
 
 /* Nuestro objetivo */
 .goal {
-  padding: 80px 0;
+  padding: 60px 0; /* un poco menos para suavizar el paso entre secciones */
   background-color: #f2f6f9;
   text-align: center;
 }
@@ -234,7 +279,7 @@ nav .btn {
 
 /* Sección NUEVA: ¿Quiénes somos? */
 .about-us {
-  padding: 80px 0;
+  padding: 50px 0;
   text-align: center;
   background-color: #f9f9f9;
   max-width: 1200px;
@@ -265,6 +310,8 @@ nav .btn {
   margin: 0 auto;
   grid-auto-rows: auto;
   padding: 10px; /* espacio extra alrededor de la grid */
+  /* evita que elementos se corten al reordenar */
+  word-break: break-word;
 }
 
 /* Posicionamiento explícito para lograr la pirámide invertida */
@@ -335,7 +382,21 @@ nav .btn {
 }
 
 /* Ajustes responsive */
+@media (max-width: 1200px) {
+  :root { --header-offset: 96px; }
+  .team-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  /* reorganización para que la "pirámide" mantenga una lectura correcta */
+  .team-cards .card:nth-child(1) { grid-column: 2; }
+  .team-cards .card:nth-child(2) { grid-column: 1; }
+  .team-cards .card:nth-child(3) { grid-column: 3; }
+  .team-cards .card:nth-child(4) { grid-column: 2; }
+  .team-cards .card:nth-child(5) { grid-column: 2; }
+}
+
 @media (max-width: 1000px) {
+  :root { --header-offset: 88px; }
   .team-cards {
     grid-template-columns: repeat(2, minmax(220px, 1fr));
   }
@@ -346,9 +407,12 @@ nav .btn {
     width: 120px;
     height: 120px;
   }
+  /* desactivar posicionamientos absolutos para evitar conflictos */
+  .team-cards .card { grid-column: auto !important; }
 }
 
 @media (max-width: 600px) {
+  :root { --header-offset: 84px; }
   .team-cards {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -474,7 +538,7 @@ footer {
 
 /* Hago que el scroll a secciones deje un margen visible debajo del header */
 section, .about-us, .how-it-works, .goal, .stats, .cta {
-  scroll-margin-top: 140px; /* aumentado desde 110px */
+  scroll-margin-top: calc(var(--header-offset) + 10px); /* aumentado desde 110px */
 }
 
 /* Suavizado de scroll al navegar por anclas */

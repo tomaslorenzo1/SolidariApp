@@ -35,6 +35,7 @@
 
 /* thumbnail column */
 .admin-table img { width:56px; height:40px; object-fit:cover; border-radius:6px; border:1px solid #e6eefc; }
+.admin-table img[alt=""] { background:#fbfdff; border-radius:6px; }
 
 /* ajustar acciones en celdas para que se vean alineadas y con espaciado */
 .admin-table td > .btn-small,
@@ -135,6 +136,22 @@
 /* Estadísticas: contenedor y tarjetas */
 #panel-stats-wrap .panel-card { padding:12px; border-radius:10px; box-shadow:0 8px 24px rgba(43,108,176,0.04); }
 #panel-stats-wrap .panel-card canvas { width:100% !important; height:160px !important; }
+
+/* Asegurar que los canvases para doughnuts mantengan proporción visible */
+#mini-metrics canvas, #doughnut-visitas, #doughnut-transf, #doughnut-pres {
+  width:120px !important;
+  height:100px !important;
+  display:block;
+  margin:0 auto;
+}
+
+/* canvases detallados */
+#chart-line-visits, #chart-bar-donations { width:100% !important; height:220px !important; }
+
+/* Filas de usuarios con distintivos por rol */
+.role-donante { background: linear-gradient(90deg, rgba(235,247,255,0.6), rgba(255,255,255,0.4)); }
+.role-beneficiario { background: linear-gradient(90deg, rgba(237,249,237,0.6), rgba(255,255,255,0.4)); }
+.role-admin { background: linear-gradient(90deg, rgba(255,243,237,0.6), rgba(255,255,255,0.4)); }
 
 /* ajustes: botones inline */
 [ data-setting ] { padding:8px 10px; border-radius:8px; border:1px solid #e6eefc; background:#fff; cursor:pointer; }
@@ -250,3 +267,26 @@
 /* mantener el aspecto antiguo de botones para compatibilidad */
 .btn-small { transition: transform .08s ease; }
 .btn-small:active { transform: translateY(1px); }
+
+/* pequeños ajustes visuales para el bloque de reportes */
+#sec-ajustes .panel-card textarea, #sec-ajustes .panel-card input[type="text"] { font-size:14px; }
+
+/* Toggle switch estilo iPhone */
+.switch {
+  display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;
+}
+.switch input { display:none; }
+.switch .slider {
+  position:relative; width:46px; height:26px; background:#e6eefc; border-radius:20px; display:inline-block; vertical-align:middle; transition:background .18s ease;
+}
+.switch .slider:after {
+  content:''; position:absolute; left:3px; top:3px; width:20px; height:20px; background:#fff; border-radius:50%; box-shadow:0 2px 6px rgba(2,20,60,0.12); transition:transform .18s ease;
+}
+.switch input:checked + .slider { background:#2b6cb0; }
+.switch input:checked + .slider:after { transform: translateX(20px); }
+
+/* report button align left wrapper */
+.report-actions { justify-content:flex-start; }
+
+/* subtle spacing between slider and label text */
+.switch span.label { margin-left:8px; }
