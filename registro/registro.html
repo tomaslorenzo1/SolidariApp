@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro - SolidariApp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="registro.css">
+</head>
+<body>
+  <header class="topbar">
+    <img src="img/logo_header.png" alt="SolidariApp" class="brand-logo">
+    <div class="brand-name">SolidariApp</div>
+  </header>
+
+  <main>
+    <section class="form-section">
+      <h2>"<u>Crear cuenta</u>"</h2>
+      <form action="registro.php" method="POST">
+        <label for="nombre">Nombre completo</label>
+        <input type="text" id="nombre" name="nombre" required>
+
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="dni">DNI</label>
+        <input type="text" id="dni" name="dni" required>
+
+        <label for="telefono">Teléfono</label>
+        <input type="text" id="telefono" name="telefono" required placeholder="Ej: +541122223333 con prefijo y sin espacios">
+
+        <label for="direccion">Dirección</label>
+        <input type="text" id="direccion" name="direccion" required>
+
+        <label for="password">Contraseña</label>
+        <div class="password-container">
+          <input type="password" id="password" name="password" required>
+          <img src="img/eye_closed.png" id="toggleIcon" class="toggle-password" alt="Mostrar/Ocultar">
+        </div>
+
+        <button type="submit">Registrarse</button>
+
+        <div class="links">
+          <p>¿Ya tenés cuenta? <a href="../login/login.html">Iniciar Sesión</a></p>
+        </div>
+        
+      </form>
+    </section>
+  </main>
+
+  <script src="registro.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+/* registro.css */
+:root{
+    --blue:#3498db;
+    --blue-dark:#2980b9;
+    --bg:#f4f7fb;
+    --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  
+  /* Tipografía y reset */
+  body{
+    margin:0;
+    font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:#17222a;
+    min-height:100vh;
+  }
+  
+  /* header (idéntico a login.css) */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 20px;
+    background:var(--blue);
+    color:white;
+  }
+  .brand-logo{
+    width:50px;
+    height:auto;
+    display:block;
+    object-fit:contain;
+    max-height:56px;
+  }
+  .brand-name{font-weight:600;font-size:20px}
+  
+  /* Formulario */
+  main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px;
+  }
+  
+  .form-section {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 450px;
+  }
+  
+  .form-section h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #34495e;
+  }
+  
+  label {
+    font-weight: 600;
+    display: block;
+    margin-top: 12px;
+  }
+  
+  input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border: 1px solid #ccd1d9;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  
+  button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 14px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  button:hover {
+    background: #2980b9;
+  }
+  
+  /* Contenedor del input de contraseña */
+  .password-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .password-container input {
+    width: 100%;
+    padding-right: 45px; /* espacio para el ojito */
+  }
+  
+  .toggle-password {
+    position: absolute;
+    right: 10px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    user-select: none;
+  }
+
+.links{margin-top:14px;text-align:center}
+.links a{color:var(--blue);text-decoration:none}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recuperar cuenta - SolidariApp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="recuperar.css">
+</head>
+<body>
+  <header class="topbar">
+    <img src="img/logo_header.png" alt="SolidariApp" class="brand-logo">
+    <div class="brand-name">SolidariApp</div>
+  </header>
+
+  <main>
+    <section class="form-section">
+      <h2>"<u>Recuperar cuenta</u>"</h2>
+
+      <p style="text-align:center;color:#333;">Ingresá el correo con el que te registraste y te enviaremos un enlace seguro para restablecer tu contraseña.</p>
+
+      <form action="recuperar.php" method="POST" id="recuperarForm">
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" name="email" required placeholder="tucorreo@dominio.com">
+
+        <button type="submit">Enviar enlace</button>
+      </form>
+
+      <div class="link">
+      <p><a href="../login/login.html">"Volver al inicio de sesión"</a></p>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>
