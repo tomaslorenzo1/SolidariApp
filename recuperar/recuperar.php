@@ -79,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Asunto (con acentos: PHPMailer manejará la codificación porque seteamos CharSet)
                 $mail->Subject = 'Recuperar contraseña - SolidariApp';
 
-                $link = "http://localhost/SolidariApp/recuperar/recuperar_contraseña.php?token=" . urlencode($token);
+                $link = "http://localhost/SolidariApp/recuperar/recuperar_contrasenia.php?token=" . urlencode($token);
 
                 // Body: usar cid:logo_cid para mostrar la imagen embebida en el mail
                 $mail->Body = "

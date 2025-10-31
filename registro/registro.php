@@ -12,6 +12,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $telefono  = $_POST['telefono'];
     $direccion = $_POST['direccion'];
     $password  = $_POST['password'];
+    $rol       = $_POST['rol']; // <-- nuevo: 'donante' o 'beneficiario'
 
     // Encriptamos la contraseña
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
@@ -22,16 +23,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // Fecha de expiración del código (24 horas desde ahora)
     $token_expiry = date("Y-m-d H:i:s", strtotime("+1 day"));
 
+    // MODIFICADO: ahora usamos placeholder para rol y lo insertamos
     $stmt = $conn->prepare("INSERT INTO usuarios 
         (nombre, email, password, rol, dni, telefono, direccion, email_verificado, token_verificacion, token_expiry, fecha_registro) 
-        VALUES (?, ?, ?, 'usuario', ?, ?, ?, 0, ?, ?, NOW())");
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, NOW())");
 
     if (!$stmt) {
         // fallo en preparar la consulta
         die("Error en la preparación de la consulta: " . $conn->error);
     }
 
-    $stmt->bind_param("ssssssss", $nombre, $email, $password_hash, $dni, $telefono, $direccion, $codigo_verificacion, $token_expiry);
+    // bind_param actualizado: ahora hay 9 placeholders (todos strings salvo que quieras otro tipo)
+    $stmt->bind_param("sssssssss", $nombre, $email, $password_hash, $rol, $dni, $telefono, $direccion, $codigo_verificacion, $token_expiry);
 
     if ($stmt->execute()) {
         // Enviar correo con PHPMailer

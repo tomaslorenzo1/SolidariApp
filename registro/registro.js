@@ -29,7 +29,7 @@ passwordInput.addEventListener("input", function (e) {
 
   // Construir el texto enmascarado con la última letra visible
   let masked = "•".repeat(realPassword.length - 1) + realPassword.slice(-1);
-  passwordInput.type = "text";
+  passwordInput.type = 'text';
   passwordInput.value = masked;
 
   // Después de 0.4s ocultar también la última letra
@@ -40,7 +40,19 @@ passwordInput.addEventListener("input", function (e) {
   }, 400);
 });
 
-// Asegurar que al enviar se use la contraseña real
-passwordInput.form.addEventListener("submit", () => {
+// Asegurar que al enviar se use la contraseña real y que haya rol seleccionado
+passwordInput.form.addEventListener("submit", (e) => {
+  // colocamos la contraseña real en el campo antes de enviar
   passwordInput.value = realPassword;
+
+  // Validación extra: que exista y esté seleccionado el rol (radio)
+  const rolChecked = document.querySelector('input[name="rol"]:checked');
+  if (!rolChecked) {
+    e.preventDefault();
+    alert("Por favor seleccioná el tipo de cuenta.");
+    // enfocamos el primer label para que el usuario vea la opción
+    const firstRole = document.querySelector('.role-option');
+    if (firstRole) firstRole.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
 });

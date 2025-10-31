@@ -1,115 +1,154 @@
 /* registro.css */
 :root{
-    --blue:#3498db;
-    --blue-dark:#2980b9;
-    --bg:#f4f7fb;
-    --card:#ffffff;
-  }
-  *{box-sizing:border-box}
-  
-  /* Tipografía y reset */
-  body{
-    margin:0;
-    font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    background:var(--bg);
-    color:#17222a;
-    min-height:100vh;
-  }
-  
-  /* header (idéntico a login.css) */
-  .topbar{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:14px 20px;
-    background:var(--blue);
-    color:white;
-  }
-  .brand-logo{
-    width:50px;
-    height:auto;
-    display:block;
-    object-fit:contain;
-    max-height:56px;
-  }
-  .brand-name{font-weight:600;font-size:20px}
-  
-  /* Formulario */
-  main {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 40px;
-  }
-  
-  .form-section {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-    width: 100%;
-    max-width: 450px;
-  }
-  
-  .form-section h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #34495e;
-  }
-  
-  label {
-    font-weight: 600;
-    display: block;
-    margin-top: 12px;
-  }
-  
-  input {
-    width: 100%;
-    padding: 12px;
-    margin-top: 6px;
-    border: 1px solid #ccd1d9;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-  
-  button {
-    margin-top: 20px;
-    width: 100%;
-    padding: 14px;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-  }
-  
-  button:hover {
-    background: #2980b9;
-  }
-  
-  /* Contenedor del input de contraseña */
-  .password-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-  
-  .password-container input {
-    width: 100%;
-    padding-right: 45px; /* espacio para el ojito */
-  }
-  
-  .toggle-password {
-    position: absolute;
-    right: 10px;
-    cursor: pointer;
-    width: 24px;
-    height: 24px;
-    user-select: none;
-  }
+  --blue:#3498db;
+  --blue-dark:#2980b9;
+  --bg:#f4f7fb;
+  --card:#ffffff;
+}
+*{box-sizing:border-box}
+
+/* Tipografía y reset */
+body{
+  margin:0;
+  font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);
+  color:#17222a;
+  min-height:100vh;
+}
+
+/* header (idéntico a login.css) */
+.topbar{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 20px;
+  background:var(--blue);
+  color:white;
+}
+.brand-logo{
+  width:50px;
+  height:auto;
+  display:block;
+  object-fit:contain;
+  max-height:56px;
+}
+.brand-name{font-weight:600;font-size:20px}
+
+/* Formulario */
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px;
+}
+
+.form-section {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 450px;
+}
+
+.form-section h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #34495e;
+}
+
+label {
+  font-weight: 600;
+  display: block;
+  margin-top: 12px;
+}
+
+/* MODIFICADO: incluye select/radio-card para que tenga el mismo estilo que inputs */
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin-top: 6px;
+  border: 1px solid #ccd1d9;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+}
+
+button {
+  margin-top: 20px;
+  width: 100%;
+  padding: 14px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+/* Contenedor del input de contraseña */
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  width: 100%;
+  padding-right: 45px; /* espacio para el ojito */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  user-select: none;
+}
 
 .links{margin-top:14px;text-align:center}
 .links a{color:var(--blue);text-decoration:none}
+
+/* ===== estilos para role-group (radio-card) ===== */
+.role-group{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:6px;
+}
+
+/* ocultamos visualmente el radio button */
+.role-input { display:none; }
+
+.role-option{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  border-radius:10px;
+  padding:10px;
+  border:1px solid #e6eef8;
+  background:#fff;
+  cursor:pointer;
+  transition: box-shadow .15s, transform .06s, border-color .12s;
+}
+.role-option:hover{ transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+
+.role-icon{ width:36px; height:36px; flex:0 0 36px; color:var(--blue); }
+
+.role-text{ display:flex; flex-direction:column; }
+.role-title{ font-weight:700; color:#16313b; }
+.role-sub{ font-size:13px; color:#6b7280; margin-top:2px; }
+
+/* estilo cuando el radio está checked -> usar selector: input:checked + label */
+.role-input:checked + .role-option{
+  background:#eef6ff;
+  border-color:var(--blue);
+  box-shadow:0 6px 18px rgba(52,152,219,0.12);
+}

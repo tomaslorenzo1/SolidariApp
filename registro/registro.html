@@ -32,6 +32,39 @@
         <label for="direccion">Dirección</label>
         <input type="text" id="direccion" name="direccion" required>
 
+        <!-- AÑADIDO: tipo de cuenta como radio-card (mantiene name="rol") -->
+        <label style="margin-top:12px;font-weight:600;display:block;">Tipo de cuenta</label>
+        <div class="role-group">
+          <input type="radio" id="rol_donante" name="rol" value="donante" class="role-input">
+          <label for="rol_donante" class="role-option">
+            <!-- SVG icon (donante - corazón) -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="role-icon" aria-hidden="true" fill="currentColor">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 
+              2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09
+              C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5
+              c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+
+            <div class="role-text">
+              <div class="role-title">Quiero ofrecer ayuda</div>
+              <div class="role-sub">Hacer donaciones y ofrecer tiempo</div>
+            </div>
+          </label>
+
+          <input type="radio" id="rol_beneficiario" name="rol" value="beneficiario" class="role-input">
+          <label for="rol_beneficiario" class="role-option">
+            <!-- SVG icon (centro de donación - casa) -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="role-icon" aria-hidden="true" fill="currentColor">
+              <path d="M12 3l9 8h-3v9H6v-9H3l9-8z"/>
+            </svg>
+            <div class="role-text">
+              <div class="role-title">Soy un centro / organización</div>
+              <div class="role-sub">Recibir donaciones o gestionar campañas</div>
+            </div>
+          </label>
+        </div>
+        <!-- FIN AÑADIDO -->
+
         <label for="password">Contraseña</label>
         <div class="password-container">
           <input type="password" id="password" name="password" required>
@@ -43,7 +76,7 @@
         <div class="links">
           <p>¿Ya tenés cuenta? <a href="../login/login.html">Iniciar Sesión</a></p>
         </div>
-        
+
       </form>
     </section>
   </main>

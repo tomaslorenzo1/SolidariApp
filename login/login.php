@@ -53,5 +53,5 @@ if (isset($user['email_verificado']) && intval($user['email_verificado']) === 0)
 $_SESSION['usuario_id'] = $user['id_usuario'];
 $_SESSION['usuario_nombre'] = $user['nombre'];
 
-header('Location: ../index/index.html');
+header('Location: ../inicio/inicio.html');
 exit;
