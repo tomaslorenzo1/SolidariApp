@@ -1,6 +1,6 @@
-// index/index.js
-const API_URL = './api_campanas.php';
-let map, markers = [], campaigns = [];
+// index/index.js (modificado para manejar campañas + centros)
+const API_URL = './api_lugares.php';
+let map, markers = [], places = [];
 let userLocation = null; // ubicación del usuario
 let resultsListEl = null;
 let debounceTimer = null;
@@ -21,6 +21,8 @@ function init() {
       map.setView([lat, lng], 13);
       // marker opcional de usuario
       L.circleMarker([lat, lng], { radius: 6, color: '#3498db' }).addTo(map);
+      // recargar lugares para que las distancias se muestren desde el inicio
+      try { loadPlaces({}); } catch(e) {}
     }, () => {
       // si el usuario no permite, dejamos centro por defecto
     });
@@ -62,20 +64,20 @@ function init() {
       const active = btn.classList.toggle('active');
       document.querySelectorAll('.chip').forEach(c => { if (c !== btn) c.classList.remove('active'); });
       if (active) {
-        loadCampaigns({ categoria: cat, q: document.getElementById('searchInput').value.trim() });
+        loadPlaces({ categoria: cat, q: document.getElementById('searchInput').value.trim() });
       } else {
-        loadCampaigns({ q: document.getElementById('searchInput').value.trim() });
+        loadPlaces({ q: document.getElementById('searchInput').value.trim() });
       }
     };
     chips.appendChild(btn);
   });
 
   // carga inicial (muestra todos)
-  loadCampaigns({});
+  loadPlaces({});
 }
 
-// carga campañas desde API con filtros opcionales
-function loadCampaigns(opts = {}) {
+// carga campañas y centros desde API con filtros opcionales
+function loadPlaces(opts = {}) {
   const params = new URLSearchParams();
   if (opts.q) params.set('q', opts.q);
   if (opts.categoria) params.set('categoria', opts.categoria);
@@ -86,13 +88,13 @@ function loadCampaigns(opts = {}) {
       return r.json();
     })
     .then(data => {
-      campaigns = Array.isArray(data) ? data : [];
+      places = Array.isArray(data) ? data : [];
       clearMarkers();
-      addMarkers(campaigns);
+      addMarkers(places);
 
       // si el usuario indicó buscar (q o categoria) o llamamos en vivo, mostramos resultados
       if ((opts.q && opts.q !== '') || (opts.categoria && opts.categoria !== '')) {
-        fillResults(campaigns);
+        fillResults(places);
       } else {
         hideResults();
       }
@@ -104,8 +106,7 @@ function loadCampaigns(opts = {}) {
       }
     })
     .catch(err => {
-      console.error('Error al cargar campañas:', err);
-      // mostrar mensaje liviano en UI si querés
+      console.error('Error al cargar lugares:', err);
       hideResults();
     });
 }
@@ -119,42 +120,71 @@ function clearMarkers() {
 
 /* ------------------ POPUP MEJORADO (addMarkers) ------------------ */
 function addMarkers(list) {
-  list.forEach(c => {
-    const lat = parseFloat(c.lat);
-    const lng = parseFloat(c.lng);
+  list.forEach(item => {
+    // item expected fields: id, tipo ('campana'|'centro'), titulo, descripcion, lat, lng, categorias, horario, imagenes (array)
+    const lat = parseFloat(item.lat);
+    const lng = parseFloat(item.lng);
     if (isNaN(lat) || isNaN(lng)) return; // ignorar si no tiene coords
 
     const marker = L.marker([lat, lng]).addTo(map);
-    // guardamos id para luego encontrar marker fácilmente
-    marker._campId = c.id;
+    // guardamos id y tipo para luego encontrar marker fácilmente
+    marker._campId = item.id;
+    marker._type = item.tipo || 'campana';
 
     // construir HTML del popup (imagen, título, descripción, chips, horario, distancia, botón)
-    const slug = slugify(c.titulo || '');
-    const imgPath = `../centros/${slug}/img/Portada.png`; // ruta tentativa según convención
-    const description = truncate(c.descripcion || '', 140);
-    const categoriesHtml = buildCategoryChips(c.categorias || '');
-    const horarioHtml = c.horario ? `<div style="color:#777;font-size:13px;margin-top:6px">${escapeHtml(c.horario)}</div>` : '';
-    let distanceHtml = '';
-    if (userLocation && !isNaN(parseFloat(c.lat)) && !isNaN(parseFloat(c.lng))) {
-      const d = calcDistance(userLocation.lat, userLocation.lng, parseFloat(c.lat), parseFloat(c.lng));
-      distanceHtml = `<div style="font-size:13px;color:#555;margin-top:6px">A ${d.toFixed(1)} km</div>`;
-    } else {
-      distanceHtml = `<div style="font-size:13px;color:#555;margin-top:6px">Ubicación: ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>`;
+    const description = truncate(item.descripcion || '', 140);
+    const categoriesHtml = buildCategoryChips(item.categorias || '');
+    const horarioHtml = item.horario ? `<div style="color:#777;font-size:13px;margin-top:6px">${escapeHtml(item.horario)}</div>` : '';
+    let distanceKm = null;
+    if (userLocation && !isNaN(parseFloat(item.lat)) && !isNaN(parseFloat(item.lng))) {
+      distanceKm = calcDistance(userLocation.lat, userLocation.lng, parseFloat(item.lat), parseFloat(item.lng));
     }
+    let locationHtml = '';
+    if (item.direccion && String(item.direccion).trim() !== '') {
+      const distText = (distanceKm !== null) ? ` — A ${distanceKm.toFixed(1)} km` : '';
+      locationHtml = `<div style="font-size:13px;color:#555;margin-top:6px">Dirección: ${escapeHtml(String(item.direccion))}${distText}</div>`;
+    } else {
+      if (distanceKm !== null) {
+        locationHtml = `<div style="font-size:13px;color:#555;margin-top:6px">A ${distanceKm.toFixed(1)} km</div>`;
+      } else {
+        locationHtml = `<div style="font-size:13px;color:#555;margin-top:6px">Ubicación no disponible</div>`;
+      }
+    }
+
+    // determinar imagen portada: si item.imagenes es array y tiene elementos, usamos el primero; si es string tratamos de parsear JSON
+    let portada = '';
+    try {
+      if (Array.isArray(item.imagenes) && item.imagenes.length > 0) {
+        portada = item.imagenes[0];
+      } else if (typeof item.imagenes === 'string' && item.imagenes.trim() !== '') {
+        // puede venir como JSON string
+        const parsed = JSON.parse(item.imagenes);
+        if (Array.isArray(parsed) && parsed.length > 0) portada = parsed[0];
+      }
+    } catch(e) {
+      portada = '';
+    }
+    // fallback si no hay imagen
+    const fallbackImg = 'img/logo_header.png';
+    const imgPath = portada ? (portada.startsWith('http') ? portada : ('../' + portada)) : fallbackImg;
+
+    // tipo label
+    const tipoLabel = item.tipo === 'centro' ? 'Centro' : 'Campaña';
 
     const popupHtml = `
       <div style="min-width:260px;font-family:inherit;display:flex;gap:10px">
         <div style="flex:0 0 110px;">
-          <img src="${imgPath}" alt="${escapeHtml(c.titulo)}" style="width:110px;height:80px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">
+          <img src="${escapeHtml(imgPath)}" alt="${escapeHtml(item.titulo)}" style="width:110px;height:80px;object-fit:cover;border-radius:6px" onerror="this.src='${fallbackImg}';">
         </div>
         <div style="flex:1 1 auto;">
-          <div style="font-weight:700;font-size:15px;color:#16222a">${escapeHtml(c.titulo)}</div>
+          <div style="font-weight:700;font-size:15px;color:#16222a">${escapeHtml(item.titulo)}</div>
           <div style="font-size:13px;color:#333;margin-top:6px;line-height:1.2">${escapeHtml(description)}</div>
           <div style="margin-top:8px">${categoriesHtml}</div>
           ${horarioHtml}
-          ${distanceHtml}
+          <div style="margin-top:6px;font-size:12px;color:#777">${escapeHtml(tipoLabel)}</div>
+          ${locationHtml}
           <div style="margin-top:8px;text-align:right">
-            <button onclick="onViewDetails(${c.id})" style="padding:8px 10px;background:#3498db;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Ver más</button>
+            <button onclick="onViewDetails('${escapeHtml(item.tipo)}', ${item.id})" style="padding:8px 10px;background:#3498db;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;">Ver más</button>
           </div>
         </div>
       </div>
@@ -169,9 +199,12 @@ function addMarkers(list) {
 /* ------------------ FIN POPUP MEJORADO ------------------ */
 
  // al hacer clic en "Ver detalles" del popup
-function onViewDetails(id) {
-  // Mantengo la redirección que ya venías usando; podés cambiar la ruta si querés otra convención
-  window.location.href = `../centros/centrodedonacionesej/centro.html?campana_id=${id}`;
+function onViewDetails(tipo, id) {
+  // redirige a la vista de detalle centralizada.
+  // Usa ../detalle/detalle.php como plantilla que renderizará según tipo e id.
+  const safeTipo = encodeURIComponent(String(tipo || 'campana'));
+  const safeId = encodeURIComponent(String(id));
+  window.location.href = `../detalle/detalle.php?tipo=${safeTipo}&id=${safeId}`;
 }
 
 // manejador general de búsqueda
@@ -184,14 +217,14 @@ function onSearch(force = false) {
   // si está vacío y no hay filtros, ocultamos
   if (!q && !categoria) {
     hideResults();
-    // también cargamos todas las campañas sin filtro (opcional)
-    loadCampaigns({});
+    // también cargamos todos los lugares sin filtro (opcional)
+    loadPlaces({});
     return;
   }
 
   // al pedir force buscamos y hacemos fit bounds
-  loadCampaigns({ q, categoria, forceFit: !!force });
-  // si queremos que el usuario vea la lista cuando presiona Enter, dejamos fillResults en loadCampaigns
+  loadPlaces({ q, categoria, forceFit: !!force });
+  // si queremos que el usuario vea la lista cuando presiona Enter, dejamos fillResults en loadPlaces
 }
 
 // muestra la lista de resultados (estilo autocompletar)
@@ -279,8 +312,8 @@ function focusOnCenter(camp) {
 
   map.setView([lat, lng], 15);
 
-  // buscar marker por id
-  const marker = markers.find(m => String(m._campId) === String(camp.id));
+  // buscar marker por id y tipo
+  const marker = markers.find(m => String(m._campId) === String(camp.id) && String(m._type) === String(camp.tipo));
   if (marker) {
     marker.openPopup();
   } else {

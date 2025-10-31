@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (formCent) formCent.classList.add('hidden');
       tabCamp.setAttribute('aria-selected','true'); tabCentro.setAttribute('aria-selected','false');
       window.scrollTo({top:0, behavior:'smooth'});
+      setTimeout(() => { if (window._mapCamp && window._mapCamp.invalidate) window._mapCamp.invalidate(); }, 60);
     });
     tabCentro.addEventListener('click', () => {
       tabCentro.classList.add('active'); tabCamp.classList.remove('active');
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (formCamp) formCamp.classList.add('hidden');
       tabCentro.setAttribute('aria-selected','true'); tabCamp.setAttribute('aria-selected','false');
       window.scrollTo({top:0, behavior:'smooth'});
+      setTimeout(() => { if (window._mapCentro && window._mapCentro.invalidate) window._mapCentro.invalidate(); }, 60);
     });
   }
 
@@ -182,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (metaRange) updateRangeBackground(metaRange);
 
   /* ------------------ ADDRESS AUTOCOMPLETE (Nominatim) ------------------ */
-  function setupAddressAutocomplete(inputId, resultsId, latId, lngId) {
+  function setupAddressAutocomplete(inputId, resultsId, latId, lngId, onSelect) {
     const input = document.getElementById(inputId);
     const results = document.getElementById(resultsId);
     const latField = document.getElementById(latId);
@@ -216,6 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
               input.value = display;
               if (latField) latField.value = item.lat;
               if (lngField) lngField.value = item.lon;
+              if (typeof onSelect === 'function') {
+                const latNum = parseFloat(item.lat);
+                const lngNum = parseFloat(item.lon);
+                onSelect({ display, lat: latNum, lng: lngNum });
+              }
               results.classList.add('hidden');
             });
             results.appendChild(div);
@@ -235,8 +242,82 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  setupAddressAutocomplete('addressCamp','addrResultsCamp','latCamp','lngCamp');
-  setupAddressAutocomplete('addressCentro','addrResultsCentro','latCentro','lngCentro');
+  // Map Picker factory
+  function createMapPicker(mapId, latId, lngId, btnGeoId, addrInputId){
+    const mapEl = document.getElementById(mapId);
+    const latEl = document.getElementById(latId);
+    const lngEl = document.getElementById(lngId);
+    const btnGeo = document.getElementById(btnGeoId);
+    const addrEl = document.getElementById(addrInputId);
+    if (!mapEl) return null;
+
+    // default center (Bahía Blanca aprox)
+    const def = {lat:-38.72, lng:-62.26};
+    const map = L.map(mapEl, { zoomControl: true }).setView([def.lat, def.lng], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker = null;
+    function setMarker(lat, lng){
+      const p = [lat, lng];
+      if (!marker){
+        marker = L.marker(p, { draggable:true }).addTo(map);
+        marker.on('dragend', () => {
+          const pos = marker.getLatLng();
+          if (latEl) latEl.value = String(pos.lat);
+          if (lngEl) lngEl.value = String(pos.lng);
+        });
+      } else {
+        marker.setLatLng(p);
+      }
+      map.setView(p, Math.max(map.getZoom(), 14));
+      if (latEl) latEl.value = String(lat);
+      if (lngEl) lngEl.value = String(lng);
+    }
+
+    // if there are initial coords, place marker
+    const initLat = parseFloat(latEl && latEl.value);
+    const initLng = parseFloat(lngEl && lngEl.value);
+    if (!Number.isNaN(initLat) && !Number.isNaN(initLng)) {
+      setMarker(initLat, initLng);
+    }
+
+    if (btnGeo && navigator.geolocation){
+      btnGeo.addEventListener('click', () => {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const { latitude, longitude } = pos.coords;
+          setMarker(latitude, longitude);
+        }, () => {
+          alert('No se pudo obtener tu ubicación. Verificá permisos del navegador.');
+        });
+      });
+    }
+
+    function invalidate(){ try { map.invalidateSize(); } catch(e){} }
+
+    return {
+      map,
+      setPosition: (lat, lng) => setMarker(lat, lng),
+      invalidate,
+    };
+  }
+
+  // initialize map pickers
+  window._mapCamp = createMapPicker('mapCamp','latCamp','lngCamp','btnGeoCamp','addressCamp');
+  window._mapCentro = createMapPicker('mapCentro','latCentro','lngCentro','btnGeoCentro','addressCentro');
+
+  // Address autocomplete with map sync
+  setupAddressAutocomplete('addressCamp','addrResultsCamp','latCamp','lngCamp', (sel) => {
+    if (window._mapCamp && sel && typeof sel.lat === 'number' && typeof sel.lng === 'number') {
+      window._mapCamp.setPosition(sel.lat, sel.lng);
+    }
+  });
+  setupAddressAutocomplete('addressCentro','addrResultsCentro','latCentro','lngCentro', (sel) => {
+    if (window._mapCentro && sel && typeof sel.lat === 'number' && typeof sel.lng === 'number') {
+      window._mapCentro.setPosition(sel.lat, sel.lng);
+    }
+  });
 
   /* ------------------ IMAGE PREVIEW, MULTI-ADD, REMOVE & DRAG-REORDER ------------------ */
   function createFileManager(inputId, previewId, maxFiles = 6) {
@@ -354,15 +435,83 @@ document.addEventListener('DOMContentLoaded', () => {
   const fmCamp = createFileManager('imgsCamp','previewCamp', 6);
   const fmCentro = createFileManager('imgsCentro','previewCentro', 6);
 
-  /* ------------------ HORARIOS: UI para agregar rangos (Camp y Centro) ------------------ */
+  /* ------------------ HORARIOS: UI renovada con toggles de días + time pickers ------------------ */
   function setupHorarios(prefix) {
-    const dayInput = document.getElementById('horarioDay' + prefix);
-    const startInput = document.getElementById('horarioStart' + prefix);
-    const endInput = document.getElementById('horarioEnd' + prefix);
-    const addBtn = document.getElementById('addHorario' + prefix);
+    const container = document.querySelector('#form' + (prefix === 'Camp' ? 'Campana' : 'Centro') + ' .horario-ui');
     const list = document.getElementById('horariosList' + prefix);
     const hidden = document.getElementById('horarioHidden' + prefix);
-    if (!list || !hidden || !addBtn) return;
+    if (!container || !list || !hidden) return;
+
+    // limpiar UI previa
+    container.innerHTML = '';
+
+    // días de la semana
+    const dias = [
+      {key:'Lun', label:'L'},
+      {key:'Mar', label:'M'},
+      {key:'Mie', label:'M'},
+      {key:'Jue', label:'J'},
+      {key:'Vie', label:'V'},
+      {key:'Sab', label:'S'},
+      {key:'Dom', label:'D'},
+    ];
+
+    const daysRow = document.createElement('div');
+    daysRow.className = 'horario-row';
+    daysRow.style.gap = '6px';
+
+    const toggles = [];
+    dias.forEach(d => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = d.label;
+      btn.title = d.key;
+      btn.style.padding = '8px 10px';
+      btn.style.borderRadius = '8px';
+      btn.style.border = '1px solid #e6eefc';
+      btn.style.background = '#fff';
+      btn.style.cursor = 'pointer';
+      btn.style.fontWeight = '700';
+      btn.style.minWidth = '36px';
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        if (btn.classList.contains('active')) {
+          btn.style.background = '#eef6ff';
+          btn.style.color = '#2b6cb0';
+        } else {
+          btn.style.background = '#fff';
+          btn.style.color = '#17222a';
+        }
+      });
+      toggles.push({btn, key:d.key});
+      daysRow.appendChild(btn);
+    });
+
+    const timeRow = document.createElement('div');
+    timeRow.className = 'horario-row';
+    timeRow.style.gap = '8px';
+
+    const startInput = document.createElement('input');
+    startInput.type = 'time';
+    startInput.ariaLabel = 'Hora inicio';
+    const endInput = document.createElement('input');
+    endInput.type = 'time';
+    endInput.ariaLabel = 'Hora fin';
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn-small';
+    addBtn.textContent = 'Agregar rango';
+
+    timeRow.append(startInput, endInput, addBtn);
+
+    const info = document.createElement('div');
+    info.className = 'file-note';
+    info.textContent = 'Seleccioná los días y el rango horario, luego presioná Agregar rango';
+
+    container.appendChild(daysRow);
+    container.appendChild(timeRow);
+    container.appendChild(info);
 
     function renderList() {
       list.innerHTML = '';
@@ -376,28 +525,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     addBtn.addEventListener('click', () => {
-      const d = dayInput ? dayInput.value.trim() : '';
-      const s = startInput ? startInput.value : '';
-      const e = endInput ? endInput.value : '';
-      if (!s || !e) {
-        alert('Por favor seleccioná hora de inicio y hora de fin.');
-        return;
-      }
-      const text = d ? `${d} ${s}-${e}` : `${s}-${e}`;
+      const s = startInput.value;
+      const e = endInput.value;
+      if (!s || !e) { alert('Seleccioná hora de inicio y fin'); return; }
+      const activeDays = toggles.filter(t => t.btn.classList.contains('active')).map(t => t.key);
+      if (activeDays.length === 0) { alert('Seleccioná al menos un día'); return; }
+      const text = `${activeDays.join(', ')} ${s}-${e}`;
       const arr = (hidden.value || '').split('|').map(s=>s.trim()).filter(Boolean);
-      // evitar duplicados
-      if (arr.some(x => x.toLowerCase() === text.toLowerCase())) {
-        if (dayInput) dayInput.value = '';
-        if (startInput) startInput.value = '';
-        if (endInput) endInput.value = '';
-        return;
-      }
+      if (arr.some(x => x.toLowerCase() === text.toLowerCase())) return;
       arr.push(text);
       hidden.value = arr.join(' | ');
       renderList();
-      if (dayInput) dayInput.value = '';
-      if (startInput) startInput.value = '';
-      if (endInput) endInput.value = '';
+      // reset selección
+      toggles.forEach(t => { t.btn.classList.remove('active'); t.btn.style.background='#fff'; t.btn.style.color='#17222a'; });
+      startInput.value = '';
+      endInput.value = '';
     });
 
     list.addEventListener('click', (e) => {
@@ -410,12 +552,220 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // initial render
     renderList();
   }
 
   setupHorarios('Camp');
   setupHorarios('Centro');
+
+  /* ------------------ STEPPER (3 pasos) para Campaña y Centro ------------------ */
+  function setupStepper(formId, stepsConfig){
+    const form = document.getElementById(formId);
+    if (!form) return;
+
+    // crear contenedor de pasos
+    const stepper = document.createElement('div');
+    stepper.className = 'stepper';
+    stepper.style.marginTop = '8px';
+
+    // crear pasos
+    const steps = [document.createElement('div'), document.createElement('div'), document.createElement('div')];
+    steps.forEach((s, i) => {
+      s.className = 'step';
+      if (i !== 0) s.style.display = 'none';
+      stepper.appendChild(s);
+    });
+
+    // barra de estado
+    const status = document.createElement('div');
+    status.style.display = 'flex';
+    status.style.justifyContent = 'space-between';
+    status.style.alignItems = 'center';
+    status.style.margin = '8px 0 12px';
+    const label = document.createElement('div');
+    label.style.fontWeight = '700';
+    const prog = document.createElement('div');
+    prog.style.flex = '1';
+    prog.style.height = '8px';
+    prog.style.background = '#eef6ff';
+    prog.style.borderRadius = '999px';
+    prog.style.marginLeft = '12px';
+    const progBar = document.createElement('div');
+    progBar.style.height = '100%';
+    progBar.style.background = 'var(--blue)';
+    progBar.style.width = '0%';
+    progBar.style.borderRadius = '999px';
+    prog.appendChild(progBar);
+    status.append(label, prog);
+
+    // navegación
+    const nav = document.createElement('div');
+    nav.style.display = 'flex';
+    nav.style.gap = '8px';
+    nav.style.marginTop = '12px';
+
+    const btnBack = document.createElement('button');
+    btnBack.type = 'button';
+    btnBack.textContent = 'Atrás';
+    btnBack.className = 'btn-small';
+    btnBack.style.background = '#eef6ff';
+    btnBack.style.color = '#2b6cb0';
+
+    const btnNext = document.createElement('button');
+    btnNext.type = 'button';
+    btnNext.textContent = 'Siguiente';
+    btnNext.className = 'btn-primary';
+
+    const btnCancel = document.createElement('button');
+    btnCancel.type = 'button';
+    btnCancel.textContent = 'Cancelar';
+    btnCancel.className = 'btn-small';
+
+    nav.append(btnBack, btnCancel, btnNext);
+
+    // insertar stepper al inicio del form y mover campos a pasos
+    form.insertBefore(status, form.firstChild);
+    form.insertBefore(stepper, status.nextSibling);
+
+    function moveWithPrevLabel(el, step){
+      if (!el) return;
+      const label = el.previousElementSibling && el.previousElementSibling.tagName === 'LABEL' ? el.previousElementSibling : null;
+      if (label) step.appendChild(label);
+      step.appendChild(el);
+    }
+
+    const which = stepsConfig;
+    which.step1.forEach(sel => {
+      const el = form.querySelector(sel);
+      if (el) moveWithPrevLabel(el, steps[0]);
+    });
+    which.step2.forEach(sel => {
+      const el = form.querySelector(sel);
+      if (el) moveWithPrevLabel(el, steps[1]);
+    });
+    which.step3.forEach(sel => {
+      const el = form.querySelector(sel);
+      if (el) moveWithPrevLabel(el, steps[2]);
+    });
+
+    // mover submit si existe al final del paso 3
+    const submitBtn = form.querySelector('button.btn-primary[type="submit"]');
+    if (submitBtn) steps[2].appendChild(submitBtn.parentElement ? submitBtn.parentElement : submitBtn);
+
+    // estado y validación mínima
+    let idx = 0;
+    function updateUI(){
+      steps.forEach((s,i)=> s.style.display = (i===idx?'block':'none'));
+      label.textContent = `Paso ${idx+1}/3`;
+      progBar.style.width = `${((idx+1)/3)*100}%`;
+      btnBack.style.display = idx===0? 'none' : 'inline-block';
+      // cambiar texto botón en el último paso
+      if (idx === 2) btnNext.style.display = 'none'; else btnNext.style.display = 'inline-block';
+    }
+
+    function validateStep(){
+      // validaciones mínimas por paso según form
+      if (idx === 0){
+        // título y descripción y categorías
+        const title = form.querySelector(which.required.title);
+        const desc = form.querySelector(which.required.desc);
+        const catsHidden = form.querySelector(which.required.cats);
+        if (!title || !title.value.trim()) { alert('Completá el título'); return false; }
+        if (!desc || !desc.value.trim()) { alert('Completá la descripción'); return false; }
+        if (!catsHidden || !catsHidden.value.trim()) { alert('Agregá al menos una categoría'); return false; }
+      }
+      if (idx === 1){
+        // dirección y lat/lng
+        const dir = form.querySelector(which.required.dir);
+        const lat = form.querySelector(which.required.lat);
+        const lng = form.querySelector(which.required.lng);
+        if (!dir || !dir.value.trim()) { alert('Completá la dirección'); return false; }
+        if (!lat || !lat.value || !lng || !lng.value) { alert('Ubicá el pin en el mapa'); return false; }
+      }
+      if (idx === 2 && which.required.extra){
+        // metas/fechas/horarios/telefono según corresponda
+        const ok = which.required.extra(form);
+        if (!ok) return false;
+      }
+      return true;
+    }
+
+    btnNext.addEventListener('click', () => { if (validateStep()){ idx = Math.min(2, idx+1); updateUI(); window.scrollTo({top:0, behavior:'smooth'}); } });
+    btnBack.addEventListener('click', () => { idx = Math.max(0, idx-1); updateUI(); window.scrollTo({top:0, behavior:'smooth'}); });
+    btnCancel.addEventListener('click', () => { if (confirm('¿Cancelar creación? Se perderán los cambios no guardados.')) { window.location.href = '../inicio/inicio.html'; } });
+
+    form.appendChild(nav);
+    updateUI();
+  }
+
+  // configurar stepper para Campaña
+  setupStepper('formCampana', {
+    step1: [
+      '#previewCamp',
+      '#camp_title',
+      '#catInputCamp', '#catSuggestCamp', '#catChipsCamp', '#categorias_hidden_camp',
+      'textarea[name="descripcion"]'
+    ],
+    step2: [
+      '#addressCamp', '#addrResultsCamp', '#latCamp', '#lngCamp', '#mapCamp', '#btnGeoCamp',
+      '#telefonoHiddenCamp', '#phoneLocalCamp'
+    ],
+    step3: [
+      '#metaRange', '#metaText',
+      'input[name="fecha_inicio"]', 'input[name="fecha_fin"]',
+      '#horariosListCamp', '#horarioHiddenCamp',
+      'input[name="alias_mp"]', 'input[name="cvu_mp"]', 'input[name="link_pago_mp"]'
+    ],
+    required: {
+      title: '#camp_title',
+      desc: 'form#formCampana textarea[name="descripcion"]',
+      cats: '#categorias_hidden_camp',
+      dir: '#addressCamp', lat: '#latCamp', lng: '#lngCamp',
+      extra: (form) => {
+        const meta = form.querySelector('#metaText');
+        const fi = form.querySelector('input[name="fecha_inicio"]');
+        const ff = form.querySelector('input[name="fecha_fin"]');
+        if (!meta || !meta.value.replace(/\D/g,'').length){ alert('Indicá la meta'); return false; }
+        if (!fi || !fi.value || !ff || !ff.value){ alert('Completá las fechas'); return false; }
+        if (fi.value && ff.value && new Date(fi.value) > new Date(ff.value)) { alert('La fecha inicio no puede ser mayor que la fecha fin'); return false; }
+        return true;
+      }
+    }
+  });
+
+  // configurar stepper para Centro
+  setupStepper('formCentro', {
+    step1: [
+      '#previewCentro',
+      '#centro_title',
+      '#catInputCentro', '#catSuggestCentro', '#catChipsCentro', '#categorias_hidden_centro',
+      'form#formCentro textarea[name="descripcion"]'
+    ],
+    step2: [
+      '#addressCentro', '#addrResultsCentro', '#latCentro', '#lngCentro', '#mapCentro', '#btnGeoCentro',
+      '#telefonoHiddenCentro', '#phoneLocalCentro'
+    ],
+    step3: [
+      '#horariosListCentro', '#horarioHiddenCentro'
+    ],
+    required: {
+      title: '#centro_title',
+      desc: 'form#formCentro textarea[name="descripcion"]',
+      cats: '#categorias_hidden_centro',
+      dir: '#addressCentro', lat: '#latCentro', lng: '#lngCentro',
+      extra: (form) => {
+        const telH = form.querySelector('#telefonoHiddenCentro');
+        const local = form.querySelector('#phoneLocalCentro');
+        if (local && telH) {
+          const raw = (local.value || '').replace(/\D/g, '');
+          if (!raw) { alert('Indicá un teléfono de contacto'); return false; }
+        }
+        const hor = form.querySelector('#horarioHiddenCentro');
+        if (!hor || !hor.value.trim()) { alert('Agregá al menos un rango horario'); return false; }
+        return true;
+      }
+    }
+  });
 
   /* ------------------ Ajustes UI menores y validaciones antes de submit ------------------ */
   // asegurar que al subir imagenes y al final el bottom nav no tape botones
